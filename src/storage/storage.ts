@@ -1,10 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { RecordEntry, Routine, Settings } from '../types';
+import { RecordEntry, Routine, Settings, WeeklyReport } from '../types';
 
 const KEYS = {
   routines: '@routines',
   records: '@records',
   settings: '@settings',
+  weeklyReport: '@weeklyReport',
 } as const;
 
 const DEFAULT_SETTINGS: Settings = { theme: 'system', seeded: false };
@@ -35,3 +36,6 @@ export const saveRecords = (r: RecordEntry[]) => writeJSON(KEYS.records, r);
 
 export const loadSettings = () => readJSON<Settings>(KEYS.settings, DEFAULT_SETTINGS);
 export const saveSettings = (s: Settings) => writeJSON(KEYS.settings, s);
+
+export const loadWeeklyReport = () => readJSON<WeeklyReport | null>(KEYS.weeklyReport, null);
+export const saveWeeklyReport = (r: WeeklyReport) => writeJSON(KEYS.weeklyReport, r);

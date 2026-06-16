@@ -1,0 +1,11 @@
+name = "routine-tracker-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# 모델은 일반 변수로 노출돼도 무방
+[vars]
+ANTHROPIC_MODEL = "claude-haiku-4-5"
+
+# 시크릿(절대 파일에 두지 말 것)은 아래 명령으로 등록:
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put APP_SHARED_SECRET

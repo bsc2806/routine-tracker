@@ -45,3 +45,10 @@ export function fromDateKey(dateKey: string): Date {
   const [y, m, d] = dateKey.split('-').map(Number);
   return new Date(y, m - 1, d);
 }
+
+/** 이번 주 월요일의 날짜 키 (주간 리포트 식별자로 사용) */
+export function weekStartKey(): string {
+  const d = new Date();
+  const offset = (d.getDay() + 6) % 7; // 월=0 ... 일=6
+  return toDateKey(addDays(d, -offset));
+}

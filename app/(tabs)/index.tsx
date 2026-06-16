@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CelebrationOverlay } from '../../src/components/CelebrationOverlay';
@@ -16,13 +16,17 @@ export default function HomeScreen() {
   const { done, total, ratio } = todayProgress(routines, records);
 
   const [celebrate, setCelebrate] = useState(false);
-  const prevDone = useRef(done);
-  useEffect(() => {
-    if (total > 0 && done === total && prevDone.current < total) {
-      setCelebrate(true);
+
+  // 축하는 "홈에서 사용자가 마지막 남은 루틴을 직접 체크"할 때만 띄운다.
+  // (상세 화면 토글이나 루틴 삭제로 인한 done===total 에는 반응하지 않음)
+  const handleToggle = (id: string) => {
+    const wasDone = isDoneToday(id);
+    toggleToday(id);
+    if (!wasDone) {
+      const remaining = due.filter((x) => x.id !== id && !isDoneToday(x.id)).length;
+      if (remaining === 0) setCelebrate(true);
     }
-    prevDone.current = done;
-  }, [done, total]);
+  };
 
   const motivation =
     total === 0
@@ -72,7 +76,7 @@ export default function HomeScreen() {
               routine={r}
               completed={isDoneToday(r.id)}
               streak={getStreak(r.id)}
-              onToggle={() => toggleToday(r.id)}
+              onToggle={() => handleToggle(r.id)}
               onOpen={() => router.push(`/routine/${r.id}`)}
             />
           ))

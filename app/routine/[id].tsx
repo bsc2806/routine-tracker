@@ -3,11 +3,20 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CelebrationOverlay } from '../../src/components/CelebrationOverlay';
 import { useApp } from '../../src/store/AppContext';
-import { todayKey } from '../../src/utils/date';
+import { addDays, toDateKey, todayKey } from '../../src/utils/date';
 import { monthMatrix, monthTitle } from '../../src/utils/calendar';
 import { isDueOn, scheduleLabel, WEEKDAY_SHORT } from '../../src/utils/schedule';
-import { getLongestStreak, getStreak, rateForRoutine } from '../../src/utils/stats';
+import {
+  dueTodayRoutines,
+  getLongestStreak,
+  getStreak,
+  rateForRoutine,
+} from '../../src/utils/stats';
+
+/** 소급 완료(과거 기록 수정) 허용 범위: 오늘 포함 최근 7일 */
+const EDIT_WINDOW_DAYS = 7;
 
 export default function RoutineDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -17,6 +26,7 @@ export default function RoutineDetailScreen() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth()); // 0-11
+  const [celebrate, setCelebrate] = useState(false);
 
   const doneSet = useMemo(
     () => new Set(records.filter((r) => r.completed).map((r) => `${r.routineId}|${r.date}`)),
@@ -35,10 +45,25 @@ export default function RoutineDetailScreen() {
   }
 
   const today = todayKey();
+  const minEditKey = toDateKey(addDays(new Date(), -(EDIT_WINDOW_DAYS - 1)));
   const streak = getStreak(records, routine);
   const longest = getLongestStreak(records, routine);
   const rate = rateForRoutine(records, routine, 30);
   const weeks = monthMatrix(year, month);
+
+  const handleToggleDay = (dateKey: string) => {
+    const wasCompleted = doneSet.has(`${routine.id}|${dateKey}`);
+    toggleOn(routine.id, dateKey);
+    // 오늘 체크를 완료로 만들었고, 그로써 오늘 예정 루틴을 모두 끝냈다면 축하
+    if (dateKey === today && !wasCompleted) {
+      const remaining = dueTodayRoutines(routines).filter(
+        (r) =>
+          r.id !== routine.id &&
+          !records.some((x) => x.routineId === r.id && x.date === today && x.completed),
+      ).length;
+      if (remaining === 0) setCelebrate(true);
+    }
+  };
 
   const goPrev = () => {
     if (month === 0) {
@@ -123,7 +148,8 @@ export default function RoutineDetailScreen() {
                 const existed = routine.createdAt.slice(0, 10) <= cell.key;
                 const future = cell.key > today;
                 const isToday = cell.key === today;
-                const interactive = due && existed && !future;
+                // 소급 수정은 최근 7일 이내만 허용
+                const interactive = due && existed && !future && cell.key >= minEditKey;
 
                 let circle = 'border-2 border-transparent';
                 let textColor = 'text-gray-300 dark:text-gray-600';
@@ -143,7 +169,7 @@ export default function RoutineDetailScreen() {
                   <Pressable
                     key={cell.key}
                     disabled={!interactive}
-                    onPress={() => toggleOn(routine.id, cell.key)}
+                    onPress={() => handleToggleDay(cell.key)}
                     className="flex-1 items-center py-1"
                   >
                     <View className={`h-9 w-9 items-center justify-center rounded-full ${circle}`}>
@@ -163,10 +189,12 @@ export default function RoutineDetailScreen() {
             <Legend swatch="" label="쉬는 날" />
           </View>
           <Text className="mt-3 text-xs text-gray-400 dark:text-gray-500">
-            지난 날짜의 동그라미를 눌러 기록을 수정할 수 있어요.
+            최근 7일 이내의 기록만 눌러서 수정할 수 있어요.
           </Text>
         </View>
       </ScrollView>
+
+      <CelebrationOverlay visible={celebrate} onHide={() => setCelebrate(false)} />
     </SafeAreaView>
   );
 }

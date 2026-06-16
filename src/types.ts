@@ -40,6 +40,13 @@ export interface RecordEntry {
   completed: boolean;
 }
 
+export interface WeeklyReport {
+  /** 해당 주 월요일 키 — 새 주가 되면 재생성 */
+  weekStart: string;
+  text: string;
+  generatedAt: string;
+}
+
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 export interface Settings {

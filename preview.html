@@ -86,25 +86,28 @@
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">AI 조언</h2>
         <button class="goSettings h-10 w-10 flex items-center justify-center rounded-full bg-white dark:bg-gray-800 text-lg">⚙️</button>
       </div>
-      <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">최근 7일 루틴 데이터를 분석해 맞춤 조언을 드려요.</p>
-      <div class="mt-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 px-3 py-2">
+      <div class="mt-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 px-3 py-2">
         <p class="text-[11px] text-amber-700 dark:text-amber-300">🧪 미리보기에서는 API를 호출하지 않고 <b>실제 데이터 기반 목 응답</b>을 생성합니다.</p>
       </div>
-      <button id="adviceBtn" class="mt-5 flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-base font-semibold text-white active:opacity-80">
-        <span>✨ AI 조언 받기</span>
-      </button>
-      <p id="adviceLoading" class="mt-4 text-center text-sm text-gray-400 hidden">루틴 데이터를 분석하는 중이에요...</p>
-      <div id="adviceResult" class="mt-5 rounded-2xl bg-white dark:bg-gray-800 p-5 hidden">
-        <div class="flex items-center mb-3">
-          <span class="text-xl">🤖</span>
-          <span class="ml-2 text-base font-semibold text-gray-900 dark:text-white">코치의 조언</span>
+
+      <p class="mb-2 mt-4 text-sm font-semibold text-gray-500 dark:text-gray-400">📊 주간 리포트</p>
+      <div class="rounded-2xl bg-white dark:bg-gray-800 p-5">
+        <div id="reportArea"></div>
+      </div>
+
+      <p class="mb-2 mt-6 text-sm font-semibold text-gray-500 dark:text-gray-400">💬 맞춤 조언</p>
+      <div class="rounded-2xl bg-white dark:bg-gray-800 p-5">
+        <p class="text-sm leading-6 text-gray-500 dark:text-gray-400">최근 7일 데이터를 바탕으로 지금 가장 도움이 될 한마디를 받아보세요.</p>
+        <button id="adviceBtn" class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-base font-semibold text-white active:opacity-80">✨ AI 조언 받기</button>
+        <p id="adviceLoading" class="mt-3 text-center text-sm text-gray-400 hidden">분석하는 중이에요...</p>
+        <div id="adviceResult" class="mt-4 rounded-xl bg-gray-50 dark:bg-gray-700/40 p-4 hidden">
+          <p id="adviceText" class="text-[15px] leading-6 text-gray-700 dark:text-gray-200"></p>
         </div>
-        <p id="adviceText" class="text-[15px] leading-6 text-gray-700 dark:text-gray-200"></p>
       </div>
     </section>
 
     <!-- Celebration -->
-    <div id="celebrate" class="absolute inset-0 hidden items-center justify-center bg-black/30 z-30">
+    <div id="celebrate" class="absolute inset-0 hidden items-center justify-center bg-black/30 z-50">
       <div class="rounded-3xl bg-white dark:bg-gray-800 px-8 py-6 text-center">
         <p class="text-5xl mb-2">🎉</p>
         <p class="text-lg font-bold text-gray-900 dark:text-white">오늘 루틴 완료!</p>
@@ -348,7 +351,6 @@
   document.getElementById('todayLabel').textContent = formatKorean(_now);
   document.getElementById('greeting').textContent = greetingText(_now) + ' 👋';
 
-  let prevAllDone = false;
   function renderHome(){
     const list = $('#homeList'); list.innerHTML = '';
     const act = activeRoutines();
@@ -374,16 +376,22 @@
           ${done?'<span class="text-sm font-bold text-white">✓</span>':''}
         </button>`;
       el.querySelector('.open').onclick = () => openDetail(r.id);
-      el.querySelector('.chk').onclick = () => { toggleToday(r.id); renderAll(); };
+      // 축하는 홈에서 마지막 남은 루틴을 직접 체크할 때만
+      el.querySelector('.chk').onclick = () => {
+        const wasDone = isDoneToday(r.id);
+        toggleToday(r.id);
+        if (!wasDone) {
+          const remaining = dueTodayRoutines().filter(x => x.id !== r.id && !isDoneToday(x.id)).length;
+          if (remaining === 0) showCelebrate();
+        }
+        renderAll();
+      };
       list.appendChild(el);
     });
     const { done, total, ratio } = todayProgress();
     $('#homeRatio').textContent = `${done}/${total} 완료`;
     $('#homeBar').style.width = `${Math.round(ratio*100)}%`;
     $('#homeMotivation').textContent = total===0 ? '오늘은 예정된 루틴이 없어요.' : done===total ? '오늘 루틴을 모두 끝냈어요! 🎉' : `${total-done}개 남았어요. 조금만 더 화이팅! 💪`;
-    const allDone = total>0 && done===total;
-    if (allDone && !prevAllDone) showCelebrate();
-    prevAllDone = allDone;
   }
 
   function showCelebrate(){
@@ -479,11 +487,41 @@
     this.disabled = true; this.style.opacity = '0.5';
     setTimeout(() => {
       loading.classList.add('hidden');
-      $('#adviceText').textContent = mockAdvice();
+      $('#adviceText').textContent = '🤖 ' + mockAdvice();
       result.classList.remove('hidden');
       this.disabled = false; this.style.opacity = '1';
     }, 1200);
   };
+
+  // ----- 주간 리포트 (목) -----
+  function weekStartKey(){ const d=new Date(); const off=(d.getDay()+6)%7; return toDateKey(addDays(d,-off)); }
+  const RKEY = '@weeklyReport';
+  function loadReport(){ try { return JSON.parse(localStorage.getItem(RKEY)); } catch { return null; } }
+  function mockWeeklyReport(){
+    const rates = routineRates(7), week = weeklyData();
+    const avg = week.length ? Math.round(week.reduce((s,d)=>s+d.ratio,0)/week.length*100) : 0;
+    if (!rates.length) return '📊 이번 주 요약\n아직 등록된 루틴이 없어요. 이번 주는 작은 습관 하나를 정하는 것부터 시작해요!\n\n🎯 다음 주 목표\n- 가장 쉬운 루틴 1개 정하기\n- 매일 같은 시간에 시도하기\n- 3일 연속 체크 도전하기';
+    const sorted = [...rates].sort((a,b)=>a.rate-b.rate);
+    const worst = sorted[0], best = sorted[sorted.length-1];
+    return `📊 이번 주 요약\n이번 주 평균 달성률은 ${avg}%였어요. ${best.routine.title}은(는) 꾸준히 잘 지켰지만 ${worst.routine.title}은(는) 조금 아쉬웠어요.\n\n👍 잘한 점\n- ${best.routine.icon} ${best.routine.title} ${Math.round(best.rate*100)}% 달성\n\n🎯 다음 주 목표\n- ${worst.routine.icon} ${worst.routine.title} 시간대를 아침으로 옮기기\n- 빠진 날 없이 3일 연속 체크하기\n- 전체 평균 ${Math.min(100, avg+15)}% 도전하기`;
+  }
+  function renderReport(){
+    const rep = loadReport(), area = $('#reportArea');
+    if (rep && rep.weekStart === weekStartKey()){
+      const dt = new Date(rep.generatedAt);
+      area.innerHTML = `<div class="mb-3 flex items-center justify-between"><span class="text-base font-bold text-gray-900 dark:text-white">이번 주 리포트</span><span class="text-xs text-gray-400">${dt.getMonth()+1}월 ${dt.getDate()}일 생성</span></div><p class="text-[15px] leading-7 text-gray-700 dark:text-gray-200 whitespace-pre-line">${rep.text}</p><button id="genReport" class="mt-4 w-full rounded-xl bg-gray-100 dark:bg-gray-700 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300">↻ 다시 생성</button>`;
+    } else {
+      area.innerHTML = `<p class="text-sm leading-6 text-gray-500 dark:text-gray-400">이번 주 한 주를 돌아보는 요약과 다음 주 목표를 AI가 정리해 드려요.</p><button id="genReport" class="mt-4 w-full rounded-xl bg-emerald-500 py-3 text-base font-semibold text-white">📄 주간 리포트 생성</button>`;
+    }
+    $('#genReport').onclick = generateReport;
+  }
+  function generateReport(){
+    $('#reportArea').innerHTML = '<p class="py-4 text-center text-sm text-gray-400">리포트를 생성하는 중이에요...</p>';
+    setTimeout(() => {
+      localStorage.setItem(RKEY, JSON.stringify({ weekStart: weekStartKey(), text: mockWeeklyReport(), generatedAt: new Date().toISOString() }));
+      renderReport();
+    }, 1200);
+  }
 
   /* ============================ 모달 (추가/수정) ============================ */
   let editingId = null, selCat = '건강', selIcon = ICON_OPTIONS[0], selSchedType = 'daily', selDays = [];
@@ -552,6 +590,7 @@
   function renderDetail(){
     const r = routines.find(x => x.id === detailId); if (!r){ closeDetail(); return; }
     const today = todayKey(), done = completedSet();
+    const minEditKey = toDateKey(addDays(new Date(), -6)); // 최근 7일
     const weeks = monthMatrix(detYear, detMonth);
     let cal = '';
     weeks.forEach(week => {
@@ -560,7 +599,7 @@
         if (!cell.inMonth){ cal += '<div class="flex-1 py-1"></div>'; return; }
         const due = isDueOn(r, cell.key), completed = done.has(r.id+'|'+cell.key);
         const existed = r.createdAt.slice(0,10) <= cell.key, future = cell.key > today, isToday = cell.key === today;
-        const interactive = due && existed && !future;
+        const interactive = due && existed && !future && cell.key >= minEditKey;
         let circle = 'border-2 border-transparent', tc = 'text-gray-300 dark:text-gray-600';
         if (completed){ circle = 'bg-emerald-500'; tc = 'text-white'; }
         else if (due && existed && !future){ circle = 'border-2 border-rose-300 dark:border-rose-500/50'; tc = 'text-gray-600 dark:text-gray-300'; }
@@ -594,11 +633,21 @@
         <div class="mt-4 flex flex-wrap gap-x-4 gap-y-1.5">
           ${legend('bg-emerald-500','완료')}${legend('border-2 border-rose-300','놓침')}${legend('border border-dashed border-gray-300','예정')}${legend('','쉬는 날')}
         </div>
-        <p class="mt-3 text-xs text-gray-400">지난 날짜의 동그라미를 눌러 기록을 수정할 수 있어요.</p>
+        <p class="mt-3 text-xs text-gray-400">최근 7일 이내의 기록만 눌러서 수정할 수 있어요.</p>
       </div>`;
     $('#detPrev').onclick = () => { if(detMonth===0){detYear--;detMonth=11;}else detMonth--; renderDetail(); };
     $('#detNext').onclick = () => { if(detMonth===11){detYear++;detMonth=0;}else detMonth++; renderDetail(); };
-    $('#detailBody').querySelectorAll('[data-day]').forEach(b => b.onclick = () => { toggleOn(detailId, b.dataset.day); renderDetail(); renderAll(); });
+    $('#detailBody').querySelectorAll('[data-day]').forEach(b => b.onclick = () => {
+      const dateKey = b.dataset.day, t = todayKey();
+      const wasCompleted = completedSet().has(detailId+'|'+dateKey);
+      toggleOn(detailId, dateKey);
+      // 오늘 체크로 오늘 예정 루틴을 모두 끝냈으면 상세 화면에서도 축하
+      if (dateKey === t && !wasCompleted) {
+        const remaining = dueTodayRoutines().filter(r => r.id !== detailId && !records.some(x => x.routineId===r.id && x.date===t && x.completed)).length;
+        if (remaining === 0) showCelebrate();
+      }
+      renderDetail(); renderAll();
+    });
   }
 
   /* ============================ 탭 / 테마 ============================ */
@@ -681,12 +730,13 @@
   };
   $('#resetData').onclick = () => {
     if (!confirm('모든 데이터를 지우고 첫 실행 상태(샘플 3개)로 되돌릴까요?')) return;
-    localStorage.removeItem(K.routines); localStorage.removeItem(K.records); localStorage.removeItem(K.settings);
+    localStorage.removeItem(K.routines); localStorage.removeItem(K.records); localStorage.removeItem(K.settings); localStorage.removeItem('@weeklyReport');
     location.reload();
   };
 
   applyTheme();
   renderAll();
+  renderReport();
   </script>
 </body>
 </html>

@@ -33,9 +33,9 @@ const config: ExpoConfig = {
     typedRoutes: true,
   },
   extra: {
-    // .env 의 값이 빌드 시 주입됩니다. (v1: 클라이언트 직접 호출)
-    anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
-    anthropicModel: process.env.ANTHROPIC_MODEL ?? 'claude-haiku-4-5',
+    // AI 호출은 프록시 서버(Cloudflare Worker) 경유. 앱에는 API 키가 없음.
+    proxyUrl: process.env.EXPO_PUBLIC_PROXY_URL ?? '',
+    proxyToken: process.env.EXPO_PUBLIC_PROXY_TOKEN ?? '',
   },
 };
 
