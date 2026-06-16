@@ -62,6 +62,7 @@ interface AppContextValue {
   updateRoutine: (id: string, patch: NewRoutineInput) => Promise<void>;
   deleteRoutine: (id: string) => Promise<void>;
   toggleToday: (routineId: string) => void;
+  toggleOn: (routineId: string, dateKey: string) => void;
   isDoneToday: (routineId: string) => boolean;
   getStreak: (routineId: string) => number;
   setTheme: (theme: ThemeMode) => void;
@@ -155,8 +156,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const toggleToday = useCallback((routineId: string) => {
-    const date = todayKey();
+  const toggleOn = useCallback((routineId: string, date: string) => {
     setRecords((prev) => {
       const idx = prev.findIndex((r) => r.routineId === routineId && r.date === date);
       let next: RecordEntry[];
@@ -170,6 +170,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
+
+  const toggleToday = useCallback(
+    (routineId: string) => toggleOn(routineId, todayKey()),
+    [toggleOn],
+  );
 
   const setTheme = useCallback((theme: ThemeMode) => {
     setSettings((prev) => {
@@ -204,6 +209,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateRoutine,
       deleteRoutine,
       toggleToday,
+      toggleOn,
       isDoneToday,
       getStreak,
       setTheme,
@@ -216,6 +222,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateRoutine,
       deleteRoutine,
       toggleToday,
+      toggleOn,
       isDoneToday,
       getStreak,
       setTheme,

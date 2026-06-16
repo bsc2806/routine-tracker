@@ -39,3 +39,9 @@ export function weekdayLabel(dateKey: string): string {
   const [y, m, d] = dateKey.split('-').map(Number);
   return WEEKDAYS[new Date(y, m - 1, d).getDay()];
 }
+
+/** "YYYY-MM-DD" -> 로컬 Date */
+export function fromDateKey(dateKey: string): Date {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -75,17 +76,22 @@ export default function ManageScreen() {
               key={routine.id}
               className="mb-3 flex-row items-center rounded-2xl bg-white p-4 dark:bg-gray-800"
             >
-              <Text className="text-2xl">{routine.icon}</Text>
-              <View className="ml-3 flex-1">
-                <Text className="text-base font-semibold text-gray-900 dark:text-white">
-                  {routine.title}
-                </Text>
-                <Text className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                  {routine.category}
-                  {`  ·  ${scheduleLabel(routine)}`}
-                  {routine.reminderTime ? `  ·  🔔 ${routine.reminderTime}` : ''}
-                </Text>
-              </View>
+              <Pressable
+                onPress={() => router.push(`/routine/${routine.id}`)}
+                className="flex-1 flex-row items-center active:opacity-60"
+              >
+                <Text className="text-2xl">{routine.icon}</Text>
+                <View className="ml-3 flex-1">
+                  <Text className="text-base font-semibold text-gray-900 dark:text-white">
+                    {routine.title}
+                  </Text>
+                  <Text className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    {routine.category}
+                    {`  ·  ${scheduleLabel(routine)}`}
+                    {routine.reminderTime ? `  ·  🔔 ${routine.reminderTime}` : ''}
+                  </Text>
+                </View>
+              </Pressable>
               <Pressable
                 onPress={() => openEdit(routine)}
                 className="mr-1 p-2 active:opacity-60"

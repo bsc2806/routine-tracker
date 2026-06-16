@@ -14,6 +14,7 @@ export default function RootLayout() {
         <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="routine/[id]" options={{ presentation: 'card' }} />
         </Stack>
       </AppProvider>
     </SafeAreaProvider>

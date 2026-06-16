@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -65,6 +66,7 @@ export default function HomeScreen() {
               completed={isDoneToday(r.id)}
               streak={getStreak(r.id)}
               onToggle={() => toggleToday(r.id)}
+              onOpen={() => router.push(`/routine/${r.id}`)}
             />
           ))
         )}

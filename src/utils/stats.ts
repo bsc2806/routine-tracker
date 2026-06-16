@@ -1,5 +1,5 @@
 import { Routine, RecordEntry } from '../types';
-import { addDays, lastNDateKeys, toDateKey, todayKey, weekdayLabel } from './date';
+import { addDays, fromDateKey, lastNDateKeys, toDateKey, todayKey, weekdayLabel } from './date';
 import { isDueOn, isDueToday } from './schedule';
 
 function completedKey(routineId: string, date: string): string {
@@ -57,6 +57,44 @@ export function getStreak(records: RecordEntry[], routine: Routine): number {
     cursor = addDays(cursor, -1);
   }
   return streak;
+}
+
+/** 생성 이후 ~ 오늘까지 예정일 기준 최장 연속 달성 기록 */
+export function getLongestStreak(records: RecordEntry[], routine: Routine): number {
+  const done = completedSet(records);
+  const today = todayKey();
+  let cursor = fromDateKey(routine.createdAt.slice(0, 10));
+  let current = 0;
+  let max = 0;
+  // 생성일부터 하루씩 전진 (안전 상한 2년)
+  for (let i = 0; i < 732; i++) {
+    const key = toDateKey(cursor);
+    if (key > today) break;
+    if (isDueOn(routine, key)) {
+      if (done.has(completedKey(routine.id, key))) {
+        current += 1;
+        if (current > max) max = current;
+      } else {
+        current = 0;
+      }
+    }
+    cursor = addDays(cursor, 1);
+  }
+  return max;
+}
+
+/** 단일 루틴의 최근 N일 달성률 (예정일만 분모) */
+export function rateForRoutine(
+  records: RecordEntry[],
+  routine: Routine,
+  days = 30,
+): RoutineRate {
+  const keys = lastNDateKeys(days);
+  const done = completedSet(records);
+  const validDays = keys.filter((k) => routine.createdAt.slice(0, 10) <= k && isDueOn(routine, k));
+  const total = validDays.length || 1;
+  const completed = validDays.filter((k) => done.has(completedKey(routine.id, k))).length;
+  return { routine, done: completed, total, rate: completed / total };
 }
 
 export interface TodayProgress {
