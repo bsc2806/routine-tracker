@@ -81,6 +81,7 @@ export default function ManageScreen() {
                 </Text>
                 <Text className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                   {routine.category}
+                  {routine.reminderTime ? `  ·  🔔 ${routine.reminderTime}` : ''}
                 </Text>
               </View>
               <Pressable

@@ -1,14 +1,40 @@
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
 import { useEffect, useState } from 'react';
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
+  Switch,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { CATEGORIES, Category, ICON_OPTIONS, Routine } from '../types';
 import { NewRoutineInput } from '../store/AppContext';
+
+function pad(n: number): string {
+  return n < 10 ? `0${n}` : `${n}`;
+}
+
+/** Date -> "HH:mm" */
+function formatTime(d: Date): string {
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** "HH:mm" -> Date (오늘 날짜 기준), 없으면 오전 9시 */
+function toTimeDate(time?: string): Date {
+  const d = new Date();
+  if (time) {
+    const [h, m] = time.split(':').map(Number);
+    d.setHours(h, m, 0, 0);
+  } else {
+    d.setHours(9, 0, 0, 0);
+  }
+  return d;
+}
 
 interface Props {
   visible: boolean;
@@ -22,20 +48,37 @@ export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props)
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<Category>('건강');
   const [icon, setIcon] = useState<string>(ICON_OPTIONS[0]);
+  const [reminderOn, setReminderOn] = useState(false);
+  const [time, setTime] = useState<Date>(toTimeDate());
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     if (visible) {
       setTitle(editing?.title ?? '');
       setCategory(editing?.category ?? '건강');
       setIcon(editing?.icon ?? ICON_OPTIONS[0]);
+      setReminderOn(!!editing?.reminderTime);
+      setTime(toTimeDate(editing?.reminderTime));
+      setShowPicker(false);
     }
   }, [visible, editing]);
 
   const canSubmit = title.trim().length > 0;
 
+  const onChangeTime = (event: DateTimePickerEvent, selected?: Date) => {
+    // 안드로이드는 선택 즉시 닫힘, iOS 는 인라인 유지
+    setShowPicker(Platform.OS === 'ios');
+    if (event.type === 'set' && selected) setTime(selected);
+  };
+
   const handleSubmit = () => {
     if (!canSubmit) return;
-    onSubmit({ title: title.trim(), category, icon });
+    onSubmit({
+      title: title.trim(),
+      category,
+      icon,
+      reminderTime: reminderOn ? formatTime(time) : undefined,
+    });
     onClose();
   };
 
@@ -110,6 +153,46 @@ export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props)
                 );
               })}
             </View>
+
+            {/* 리마인더 알림 */}
+            <View className="mt-6 flex-row items-center justify-between">
+              <View>
+                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  🔔 리마인더 알림
+                </Text>
+                <Text className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+                  매일 정해진 시간에 알림을 받아요
+                </Text>
+              </View>
+              <Switch
+                value={reminderOn}
+                onValueChange={setReminderOn}
+                trackColor={{ false: '#d1d5db', true: '#10b981' }}
+                thumbColor="#ffffff"
+              />
+            </View>
+
+            {reminderOn && (
+              <Pressable
+                onPress={() => setShowPicker(true)}
+                className="mt-3 flex-row items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 active:opacity-70 dark:border-gray-700 dark:bg-gray-800"
+              >
+                <Text className="text-sm text-gray-500 dark:text-gray-400">알림 시각</Text>
+                <Text className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
+                  {formatTime(time)}
+                </Text>
+              </Pressable>
+            )}
+
+            {reminderOn && showPicker && (
+              <DateTimePicker
+                value={time}
+                mode="time"
+                is24Hour
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onChangeTime}
+              />
+            )}
           </ScrollView>
 
           {/* 액션 */}

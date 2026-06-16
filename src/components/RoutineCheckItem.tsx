@@ -22,6 +22,7 @@ export function RoutineCheckItem({ routine, completed, streak, onToggle }: Props
         <Text className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
           {routine.category}
           {streak > 0 ? `  ·  🔥 ${streak}일 연속` : ''}
+          {routine.reminderTime ? `  ·  🔔 ${routine.reminderTime}` : ''}
         </Text>
       </View>
       <View

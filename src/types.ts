@@ -1,6 +1,6 @@
-export type Category = '건강' | '학습' | '자기계발' | '생활';
+export type Category = '건강' | '학습' | '자기계발' | '생활' | '재테크';
 
-export const CATEGORIES: Category[] = ['건강', '학습', '자기계발', '생활'];
+export const CATEGORIES: Category[] = ['건강', '학습', '자기계발', '생활', '재테크'];
 
 export const ICON_OPTIONS = [
   '💪', '💧', '📚', '🏃', '🧘', '🥗',
@@ -17,6 +17,10 @@ export interface Routine {
   createdAt: string;
   /** 삭제 대신 보관 — 통계 보존용 */
   archived?: boolean;
+  /** 매일 알림 시각 "HH:mm" (없으면 알림 없음) */
+  reminderTime?: string;
+  /** 예약된 로컬 알림 식별자 (취소/재예약용) */
+  notificationId?: string;
 }
 
 export interface RecordEntry {

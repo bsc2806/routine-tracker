@@ -20,7 +20,15 @@ const config: ExpoConfig = {
     supportsTablet: true,
     bundleIdentifier: 'com.routinetracker.app',
   },
-  plugins: ['expo-router'],
+  plugins: [
+    'expo-router',
+    [
+      'expo-notifications',
+      {
+        color: '#10b981',
+      },
+    ],
+  ],
   experiments: {
     typedRoutes: true,
   },

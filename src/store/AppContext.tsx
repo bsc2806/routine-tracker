@@ -5,10 +5,16 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import {
+  cancelReminder,
+  ensurePermission,
+  scheduleRoutineReminder,
+} from '../lib/notifications';
 import {
   loadRecords,
   loadRoutines,
@@ -42,15 +48,17 @@ export interface NewRoutineInput {
   title: string;
   category: Category;
   icon: string;
+  /** 매일 알림 시각 "HH:mm" (없으면 알림 끔) */
+  reminderTime?: string;
 }
 
 interface AppContextValue {
   routines: Routine[];
   records: RecordEntry[];
   settings: Settings;
-  addRoutine: (input: NewRoutineInput) => void;
-  updateRoutine: (id: string, patch: Partial<NewRoutineInput>) => void;
-  deleteRoutine: (id: string) => void;
+  addRoutine: (input: NewRoutineInput) => Promise<void>;
+  updateRoutine: (id: string, patch: NewRoutineInput) => Promise<void>;
+  deleteRoutine: (id: string) => Promise<void>;
   toggleToday: (routineId: string) => void;
   isDoneToday: (routineId: string) => boolean;
   getStreak: (routineId: string) => number;
@@ -65,6 +73,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [records, setRecords] = useState<RecordEntry[]>([]);
   const [settings, setSettings] = useState<Settings>({ theme: 'system', seeded: false });
   const [loaded, setLoaded] = useState(false);
+
+  // 비동기 콜백에서 최신 routines 를 읽기 위한 ref
+  const routinesRef = useRef<Routine[]>(routines);
+  useEffect(() => {
+    routinesRef.current = routines;
+  }, [routines]);
 
   // 최초 로드 + 샘플 시드
   useEffect(() => {
@@ -90,26 +104,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setColorScheme(settings.theme);
   }, [settings.theme, setColorScheme]);
 
-  const addRoutine = useCallback((input: NewRoutineInput) => {
+  const addRoutine = useCallback(async (input: NewRoutineInput) => {
+    const routine = makeRoutine(input.title, input.category, input.icon);
+    routine.reminderTime = input.reminderTime;
+    if (input.reminderTime && (await ensurePermission())) {
+      routine.notificationId = (await scheduleRoutineReminder(routine)) ?? undefined;
+    }
     setRoutines((prev) => {
-      const next = [...prev, makeRoutine(input.title, input.category, input.icon)];
+      const next = [...prev, routine];
       saveRoutines(next);
       return next;
     });
   }, []);
 
-  const updateRoutine = useCallback((id: string, patch: Partial<NewRoutineInput>) => {
+  const updateRoutine = useCallback(async (id: string, patch: NewRoutineInput) => {
+    const existing = routinesRef.current.find((r) => r.id === id);
+    // 기존 알림 취소 후 변경된 시각으로 재예약
+    await cancelReminder(existing?.notificationId);
+    let notificationId: string | undefined;
+    if (patch.reminderTime && (await ensurePermission())) {
+      notificationId =
+        (await scheduleRoutineReminder({ ...(existing as Routine), ...patch, notificationId: undefined })) ??
+        undefined;
+    }
     setRoutines((prev) => {
-      const next = prev.map((r) => (r.id === id ? { ...r, ...patch } : r));
+      const next = prev.map((r) =>
+        r.id === id ? { ...r, ...patch, reminderTime: patch.reminderTime, notificationId } : r,
+      );
       saveRoutines(next);
       return next;
     });
   }, []);
 
-  // 삭제는 아카이브(통계 보존)
-  const deleteRoutine = useCallback((id: string) => {
+  // 삭제는 아카이브(통계 보존) + 예약된 알림 취소
+  const deleteRoutine = useCallback(async (id: string) => {
+    const existing = routinesRef.current.find((r) => r.id === id);
+    await cancelReminder(existing?.notificationId);
     setRoutines((prev) => {
-      const next = prev.map((r) => (r.id === id ? { ...r, archived: true } : r));
+      const next = prev.map((r) =>
+        r.id === id ? { ...r, archived: true, notificationId: undefined } : r,
+      );
       saveRoutines(next);
       return next;
     });
