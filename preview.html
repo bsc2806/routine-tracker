@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>루틴 트래커 — v1 미리보기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: {} } };
+  </script>
+  <style>
+    body { font-family: -apple-system, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif; }
+    .phone { width: 390px; height: 800px; }
+    .tabbtn.active { color: #10b981; }
+    .screen { display: none; }
+    .screen.active { display: flex; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
+  </style>
+</head>
+<body class="bg-slate-200 dark:bg-black min-h-screen flex flex-col items-center py-8 gap-4">
+
+  <div class="flex items-center gap-3">
+    <h1 class="text-lg font-bold text-slate-700 dark:text-slate-200">루틴 트래커 · v1 미리보기</h1>
+    <button id="themeToggle" class="rounded-full bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 shadow">🌙 다크모드</button>
+  </div>
+  <p class="text-xs text-slate-500 dark:text-slate-400 max-w-md text-center">
+    실제 앱 화면을 그대로 옮긴 정적 미리보기입니다. 체크/탭 전환/다크모드는 동작하고,
+    데이터 저장(AsyncStorage)과 AI 호출(Claude API)은 실제 앱에서 연동됩니다.
+  </p>
+
+  <!-- PHONE -->
+  <div class="phone rounded-[40px] bg-gray-50 dark:bg-gray-950 shadow-2xl overflow-hidden flex flex-col border-8 border-gray-900 dark:border-gray-800 relative">
+
+    <!-- ===== HOME ===== -->
+    <section data-screen="home" class="screen active flex-1 flex-col overflow-y-auto px-5 pt-12 pb-24">
+      <p class="text-sm text-gray-500 dark:text-gray-400" id="todayLabel"></p>
+      <h2 class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">오늘의 루틴</h2>
+      <div class="mt-5 mb-6">
+        <div class="flex justify-between mb-2">
+          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">완료율</span>
+          <span id="homeRatio" class="text-sm font-bold text-emerald-600 dark:text-emerald-400">0/4 완료</span>
+        </div>
+        <div class="h-3 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+          <div id="homeBar" class="h-full rounded-full bg-emerald-500 transition-all" style="width:0%"></div>
+        </div>
+      </div>
+      <div id="homeList" class="flex flex-col"></div>
+    </section>
+
+    <!-- ===== MANAGE ===== -->
+    <section data-screen="manage" class="screen flex-1 flex-col overflow-y-auto px-5 pt-12 pb-24">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">루틴 관리</h2>
+        <span class="rounded-full bg-white dark:bg-gray-800 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300">⚙️ 시스템</span>
+      </div>
+      <div id="manageList" class="flex flex-col"></div>
+    </section>
+
+    <!-- ===== STATS ===== -->
+    <section data-screen="stats" class="screen flex-1 flex-col overflow-y-auto px-5 pt-12 pb-24">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">통계</h2>
+      <div class="mt-5 rounded-2xl bg-white dark:bg-gray-800 p-5">
+        <div class="flex justify-between items-center mb-4">
+          <span class="text-base font-semibold text-gray-900 dark:text-white">주간 달성률</span>
+          <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400">평균 68%</span>
+        </div>
+        <div id="weekChart" class="h-36 flex items-end justify-between"></div>
+      </div>
+      <div class="mt-4 flex gap-3">
+        <div class="flex-1 rounded-2xl bg-white dark:bg-gray-800 p-4">
+          <p class="text-xs text-gray-500 dark:text-gray-400">🏆 가장 잘 지킨</p>
+          <p class="mt-1 text-base font-bold text-gray-900 dark:text-white">💧 물 2L 마시기</p>
+          <p class="mt-0.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400">86%</p>
+        </div>
+        <div class="flex-1 rounded-2xl bg-white dark:bg-gray-800 p-4">
+          <p class="text-xs text-gray-500 dark:text-gray-400">⚠️ 가장 놓친</p>
+          <p class="mt-1 text-base font-bold text-gray-900 dark:text-white">💪 운동</p>
+          <p class="mt-0.5 text-sm font-semibold text-orange-500">43%</p>
+        </div>
+      </div>
+      <h3 class="mb-3 mt-6 text-base font-semibold text-gray-900 dark:text-white">루틴별 달성률 (최근 7일)</h3>
+      <div id="rateList"></div>
+    </section>
+
+    <!-- ===== ADVICE ===== -->
+    <section data-screen="advice" class="screen flex-1 flex-col overflow-y-auto px-5 pt-12 pb-24">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">AI 조언</h2>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">최근 7일 루틴 데이터를 분석해 맞춤 조언을 드려요.</p>
+      <button id="adviceBtn" class="mt-6 flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-base font-semibold text-white active:opacity-80">
+        <span>✨ AI 조언 받기</span>
+      </button>
+      <p id="adviceLoading" class="mt-4 text-center text-sm text-gray-400 hidden">루틴 데이터를 분석하는 중이에요...</p>
+      <div id="adviceResult" class="mt-5 rounded-2xl bg-white dark:bg-gray-800 p-5 hidden">
+        <div class="flex items-center mb-3">
+          <span class="text-xl">🤖</span>
+          <span class="ml-2 text-base font-semibold text-gray-900 dark:text-white">코치의 조언</span>
+        </div>
+        <p id="adviceText" class="text-[15px] leading-6 text-gray-700 dark:text-gray-200"></p>
+      </div>
+    </section>
+
+    <!-- Celebration -->
+    <div id="celebrate" class="absolute inset-0 hidden items-center justify-center bg-black/30 z-20">
+      <div class="rounded-3xl bg-white dark:bg-gray-800 px-8 py-6 items-center text-center">
+        <p class="text-5xl mb-2">🎉</p>
+        <p class="text-lg font-bold text-gray-900 dark:text-white">오늘 루틴 완료!</p>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">멋져요, 내일도 화이팅! 💪</p>
+      </div>
+    </div>
+
+    <!-- TAB BAR -->
+    <nav class="absolute bottom-0 left-0 right-0 h-20 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex justify-around items-start pt-2.5 z-10">
+      <button class="tabbtn active flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400 w-16" data-tab="home"><span class="text-xl">🏠</span><span class="text-[11px] font-medium">홈</span></button>
+      <button class="tabbtn flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400 w-16" data-tab="manage"><span class="text-xl">📋</span><span class="text-[11px] font-medium">루틴</span></button>
+      <button class="tabbtn flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400 w-16" data-tab="stats"><span class="text-xl">📊</span><span class="text-[11px] font-medium">통계</span></button>
+      <button class="tabbtn flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400 w-16" data-tab="advice"><span class="text-xl">✨</span><span class="text-[11px] font-medium">AI 조언</span></button>
+    </nav>
+  </div>
+
+  <script>
+    // ---- 샘플 데이터 ----
+    const routines = [
+      { id: 'r1', icon: '💪', title: '운동',          category: '건강',     streak: 0, done: false },
+      { id: 'r2', icon: '💧', title: '물 2L 마시기',   category: '건강',     streak: 5, done: true  },
+      { id: 'r3', icon: '📚', title: '독서 20분',      category: '자기계발', streak: 2, done: false },
+      { id: 'r4', icon: '🧘', title: '명상 10분',      category: '자기계발', streak: 1, done: false },
+    ];
+    const week = [
+      { label: '월', ratio: 0.75 }, { label: '화', ratio: 0.5 }, { label: '수', ratio: 1.0 },
+      { label: '목', ratio: 0.5 }, { label: '금', ratio: 0.75 }, { label: '토', ratio: 0.25 },
+      { label: '일', ratio: 1.0 },
+    ];
+    const perRoutine = [
+      { icon: '💧', title: '물 2L 마시기', done: 6, total: 7 },
+      { icon: '📚', title: '독서 20분',    done: 5, total: 7 },
+      { icon: '🧘', title: '명상 10분',    done: 4, total: 7 },
+      { icon: '💪', title: '운동',         done: 3, total: 7 },
+    ];
+
+    // ---- 날짜 ----
+    const W = ['일','월','화','수','목','금','토'];
+    const now = new Date();
+    document.getElementById('todayLabel').textContent =
+      `${now.getMonth()+1}월 ${now.getDate()}일 ${W[now.getDay()]}요일`;
+
+    // ---- 홈 렌더 ----
+    function renderHome() {
+      const list = document.getElementById('homeList');
+      list.innerHTML = '';
+      routines.forEach(r => {
+        const el = document.createElement('button');
+        el.className = 'mb-3 flex items-center rounded-2xl bg-white dark:bg-gray-800 p-4 text-left active:opacity-70';
+        el.innerHTML = `
+          <span class="text-2xl">${r.icon}</span>
+          <span class="ml-3 flex-1">
+            <span class="block text-base font-semibold text-gray-900 dark:text-white">${r.title}</span>
+            <span class="block mt-0.5 text-xs text-gray-500 dark:text-gray-400">${r.category}${r.streak>0?`  ·  🔥 ${r.streak}일 연속`:''}</span>
+          </span>
+          <span class="h-7 w-7 flex items-center justify-center rounded-full border-2 ${r.done?'bg-emerald-500 border-emerald-500':'border-gray-300 dark:border-gray-600'}">
+            ${r.done?'<span class="text-sm font-bold text-white">✓</span>':''}
+          </span>`;
+        el.onclick = () => { r.done = !r.done; if (r.done) r.streak++; else r.streak = Math.max(0, r.streak-1); renderHome(); };
+        list.appendChild(el);
+      });
+      const done = routines.filter(r=>r.done).length;
+      const total = routines.length;
+      document.getElementById('homeRatio').textContent = `${done}/${total} 완료`;
+      document.getElementById('homeBar').style.width = `${Math.round(done/total*100)}%`;
+      if (done === total) showCelebrate();
+    }
+
+    function showCelebrate() {
+      const c = document.getElementById('celebrate');
+      c.classList.remove('hidden'); c.classList.add('flex');
+      setTimeout(() => { c.classList.add('hidden'); c.classList.remove('flex'); }, 1800);
+    }
+
+    // ---- 루틴 관리 렌더 ----
+    function renderManage() {
+      const list = document.getElementById('manageList');
+      list.innerHTML = '';
+      routines.forEach(r => {
+        const el = document.createElement('div');
+        el.className = 'mb-3 flex items-center rounded-2xl bg-white dark:bg-gray-800 p-4';
+        el.innerHTML = `
+          <span class="text-2xl">${r.icon}</span>
+          <span class="ml-3 flex-1">
+            <span class="block text-base font-semibold text-gray-900 dark:text-white">${r.title}</span>
+            <span class="block mt-0.5 text-xs text-gray-500 dark:text-gray-400">${r.category}</span>
+          </span>
+          <span class="p-2 text-gray-400">✏️</span>
+          <span class="p-2 text-red-400">🗑️</span>`;
+        list.appendChild(el);
+      });
+      const fab = document.createElement('div');
+      fab.className = 'absolute bottom-24 right-6 h-14 w-14 flex items-center justify-center rounded-full bg-emerald-500 text-white text-3xl shadow-lg';
+      fab.textContent = '+';
+      document.querySelector('[data-screen="manage"]').appendChild(fab);
+    }
+
+    // ---- 통계 렌더 ----
+    function renderStats() {
+      const chart = document.getElementById('weekChart');
+      chart.innerHTML = week.map(d => `
+        <div class="flex-1 flex flex-col items-center">
+          <div class="mb-1.5 h-24 w-6 flex flex-col justify-end overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+            <div class="w-full rounded-full bg-emerald-500" style="height:${Math.max(4, Math.round(d.ratio*100))}%"></div>
+          </div>
+          <span class="text-[11px] text-gray-400">${d.label}</span>
+        </div>`).join('');
+      document.getElementById('rateList').innerHTML = perRoutine.map(r => {
+        const pct = Math.round(r.done/r.total*100);
+        return `<div class="mb-4">
+          <div class="mb-1.5 flex justify-between">
+            <span class="text-sm text-gray-700 dark:text-gray-300">${r.icon} ${r.title}</span>
+            <span class="text-sm font-semibold text-gray-500 dark:text-gray-400">${r.done}/${r.total}일 · ${pct}%</span>
+          </div>
+          <div class="h-2.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+            <div class="h-full rounded-full bg-emerald-500" style="width:${Math.max(2,pct)}%"></div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ---- AI 조언 (시뮬레이션) ----
+    document.getElementById('adviceBtn').onclick = function () {
+      const loading = document.getElementById('adviceLoading');
+      const result = document.getElementById('adviceResult');
+      result.classList.add('hidden');
+      loading.classList.remove('hidden');
+      this.disabled = true; this.style.opacity = '0.5';
+      setTimeout(() => {
+        loading.classList.add('hidden');
+        document.getElementById('adviceText').textContent =
+          '물 마시기는 86%로 정말 잘 지키고 계세요! 💧 다만 운동 루틴이 43%로 조금 아쉬워요. ' +
+          '저녁보다 의지력이 높은 아침 시간대로 옮기고, 처음엔 10분짜리 가벼운 스트레칭부터 시작해 보는 건 어떨까요? 🏃 작은 성공이 쌓이면 스트릭도 금방 따라올 거예요!';
+        result.classList.remove('hidden');
+        this.disabled = false; this.style.opacity = '1';
+      }, 1400);
+    };
+
+    // ---- 탭 전환 ----
+    document.querySelectorAll('.tabbtn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.tabbtn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tab = btn.dataset.tab;
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.querySelector(`[data-screen="${tab}"]`).classList.add('active');
+      };
+    });
+
+    // ---- 다크모드 ----
+    document.getElementById('themeToggle').onclick = function () {
+      const dark = document.documentElement.classList.toggle('dark');
+      this.textContent = dark ? '☀️ 라이트모드' : '🌙 다크모드';
+    };
+
+    renderHome(); renderManage(); renderStats();
+  </script>
+</body>
+</html>

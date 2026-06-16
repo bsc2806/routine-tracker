@@ -1,0 +1,38 @@
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# secrets — 절대 커밋 금지
+.env
+.env.local
+.env.*.local
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS / IDE
+.DS_Store
+*.pem
+.idea/
+.vscode/
+
+# typescript
+*.tsbuildinfo

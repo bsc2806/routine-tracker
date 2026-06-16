@@ -1,0 +1,37 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { RecordEntry, Routine, Settings } from '../types';
+
+const KEYS = {
+  routines: '@routines',
+  records: '@records',
+  settings: '@settings',
+} as const;
+
+const DEFAULT_SETTINGS: Settings = { theme: 'system', seeded: false };
+
+async function readJSON<T>(key: string, fallback: T): Promise<T> {
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch (e) {
+    console.warn(`[storage] ${key} 읽기 실패`, e);
+    return fallback;
+  }
+}
+
+async function writeJSON<T>(key: string, value: T): Promise<void> {
+  try {
+    await AsyncStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.warn(`[storage] ${key} 저장 실패`, e);
+  }
+}
+
+export const loadRoutines = () => readJSON<Routine[]>(KEYS.routines, []);
+export const saveRoutines = (r: Routine[]) => writeJSON(KEYS.routines, r);
+
+export const loadRecords = () => readJSON<RecordEntry[]>(KEYS.records, []);
+export const saveRecords = (r: RecordEntry[]) => writeJSON(KEYS.records, r);
+
+export const loadSettings = () => readJSON<Settings>(KEYS.settings, DEFAULT_SETTINGS);
+export const saveSettings = (s: Settings) => writeJSON(KEYS.settings, s);
