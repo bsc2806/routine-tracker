@@ -6,11 +6,12 @@ import { ProgressBar } from '../../src/components/ProgressBar';
 import { RoutineCheckItem } from '../../src/components/RoutineCheckItem';
 import { useApp } from '../../src/store/AppContext';
 import { formatKorean } from '../../src/utils/date';
-import { activeRoutines, todayProgress } from '../../src/utils/stats';
+import { activeRoutines, dueTodayRoutines, todayProgress } from '../../src/utils/stats';
 
 export default function HomeScreen() {
   const { routines, records, toggleToday, isDoneToday, getStreak } = useApp();
   const active = activeRoutines(routines);
+  const due = dueTodayRoutines(routines);
   const { done, total, ratio } = todayProgress(routines, records);
 
   const [celebrate, setCelebrate] = useState(false);
@@ -49,8 +50,15 @@ export default function HomeScreen() {
               아직 루틴이 없어요.{'\n'}'루틴' 탭에서 새 습관을 추가해 보세요!
             </Text>
           </View>
+        ) : due.length === 0 ? (
+          <View className="mt-16 items-center">
+            <Text className="text-4xl">☕</Text>
+            <Text className="mt-3 text-center text-gray-400 dark:text-gray-500">
+              오늘은 예정된 루틴이 없어요.{'\n'}푹 쉬어가는 것도 습관의 일부예요!
+            </Text>
+          </View>
         ) : (
-          active.map((r) => (
+          due.map((r) => (
             <RoutineCheckItem
               key={r.id}
               routine={r}

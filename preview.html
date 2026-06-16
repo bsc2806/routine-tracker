@@ -112,6 +112,10 @@
         <label class="mb-2 mt-5 block text-sm font-medium text-gray-700 dark:text-gray-300">아이콘</label>
         <div id="fIcons" class="flex flex-wrap gap-2"></div>
 
+        <label class="mb-2 mt-5 block text-sm font-medium text-gray-700 dark:text-gray-300">반복</label>
+        <div id="fSchedType" class="flex gap-2"></div>
+        <div id="fDaysRow" class="mt-3 hidden justify-between"></div>
+
         <div class="mt-6 flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-700 dark:text-gray-300">🔔 리마인더 알림</p>
@@ -171,6 +175,19 @@
   const lastNDateKeys = n => { const t = new Date(), a = []; for (let i=n-1;i>=0;i--) a.push(toDateKey(addDays(t,-i))); return a; };
   const weekdayLabel = key => { const [y,m,d] = key.split('-').map(Number); return WD[new Date(y,m-1,d).getDay()]; };
 
+  // ---- schedule.ts ----
+  const weekdayOf = key => { const [y,m,d] = key.split('-').map(Number); return new Date(y,m-1,d).getDay(); };
+  const isDueOn = (r, key) => { const s = r.schedule; if (!s || s.type==='daily') return true; return (s.days||[]).includes(weekdayOf(key)); };
+  const isDueToday = r => isDueOn(r, todayKey());
+  function scheduleLabel(r){
+    const s = r.schedule; if (!s || s.type==='daily') return '매일';
+    const d = [...(s.days||[])].sort((a,b)=>a-b);
+    if (!d.length || d.length===7) return '매일';
+    if (d.length===5 && [1,2,3,4,5].every(x=>d.includes(x))) return '평일';
+    if (d.length===2 && d.includes(0) && d.includes(6)) return '주말';
+    return d.map(x=>WD[x]).join('·');
+  }
+
   // ---- AppContext.tsx (상태) ----
   const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
   const mkRoutine = (title, category, icon) => ({ id: uid(), title, category, icon, createdAt: new Date().toISOString() });
@@ -189,7 +206,7 @@
   const persist = () => { write(K.routines, routines); write(K.records, records); write(K.settings, settings); };
   const activeRoutines = () => routines.filter(r => !r.archived);
 
-  function addRoutine(input){ const r = mkRoutine(input.title, input.category, input.icon); r.reminderTime = input.reminderTime; routines = [...routines, r]; persist(); }
+  function addRoutine(input){ const r = mkRoutine(input.title, input.category, input.icon); r.schedule = input.schedule; r.reminderTime = input.reminderTime; routines = [...routines, r]; persist(); }
   function updateRoutine(id, patch){ routines = routines.map(r => r.id===id ? {...r, ...patch} : r); persist(); }
   function deleteRoutine(id){ routines = routines.map(r => r.id===id ? {...r, archived:true} : r); persist(); } // 아카이브
   function toggleToday(id){
@@ -202,29 +219,39 @@
 
   // ---- stats.ts ----
   const completedSet = () => new Set(records.filter(r=>r.completed).map(r=>r.routineId+'|'+r.date));
+  const dueTodayRoutines = () => activeRoutines().filter(isDueToday);
+  const existsOn = (r, key) => r.createdAt.slice(0,10) <= key;
   const isDoneToday = id => records.some(r => r.routineId===id && r.date===todayKey() && r.completed);
-  function getStreak(id){
+  function getStreak(routine){
     const done = completedSet(); let cur = new Date();
-    if (!done.has(id+'|'+toDateKey(cur))) cur = addDays(cur,-1);
-    let s = 0; while (done.has(id+'|'+toDateKey(cur))) { s++; cur = addDays(cur,-1); } return s;
+    if (isDueToday(routine) && !done.has(routine.id+'|'+toDateKey(cur))) cur = addDays(cur,-1);
+    let s = 0;
+    for (let i=0;i<366;i++){
+      const key = toDateKey(cur);
+      if (!existsOn(routine, key)) break;
+      if (isDueOn(routine, key)) { if (done.has(routine.id+'|'+key)) s++; else break; }
+      cur = addDays(cur,-1);
+    }
+    return s;
   }
   function todayProgress(){
-    const act = activeRoutines(), t = todayKey();
-    const done = act.filter(r => records.some(x=>x.routineId===r.id && x.date===t && x.completed)).length;
-    return { done, total: act.length, ratio: act.length ? done/act.length : 0 };
+    const due = dueTodayRoutines(), t = todayKey(), done = completedSet();
+    const c = due.filter(r => done.has(r.id+'|'+t)).length;
+    return { done: c, total: due.length, ratio: due.length ? c/due.length : 0 };
   }
   function weeklyData(){
     const act = activeRoutines(), done = completedSet();
     return lastNDateKeys(7).map(key => {
-      const total = act.filter(r => r.createdAt.slice(0,10) <= key).length;
-      const c = act.filter(r => done.has(r.id+'|'+key)).length;
+      const dueR = act.filter(r => existsOn(r,key) && isDueOn(r,key));
+      const c = dueR.filter(r => done.has(r.id+'|'+key)).length;
+      const total = dueR.length;
       return { key, label: weekdayLabel(key), done:c, total, ratio: total ? c/total : 0 };
     });
   }
   function routineRates(days=7){
     const keys = lastNDateKeys(days), act = activeRoutines(), done = completedSet();
     return act.map(routine => {
-      const valid = keys.filter(k => routine.createdAt.slice(0,10) <= k);
+      const valid = keys.filter(k => existsOn(routine,k) && isDueOn(routine,k));
       const total = valid.length || 1;
       const c = valid.filter(k => done.has(routine.id+'|'+k)).length;
       return { routine, done:c, total, rate: c/total };
@@ -240,11 +267,14 @@
   function renderHome(){
     const list = $('#homeList'); list.innerHTML = '';
     const act = activeRoutines();
+    const due = dueTodayRoutines();
     if (!act.length) {
       list.innerHTML = `<div class="mt-16 text-center"><p class="text-4xl">🌱</p><p class="mt-3 text-gray-400">아직 루틴이 없어요.<br>'루틴' 탭에서 추가해 보세요!</p></div>`;
+    } else if (!due.length) {
+      list.innerHTML = `<div class="mt-16 text-center"><p class="text-4xl">☕</p><p class="mt-3 text-gray-400">오늘은 예정된 루틴이 없어요.<br>푹 쉬어가는 것도 습관의 일부예요!</p></div>`;
     }
-    act.forEach(r => {
-      const done = isDoneToday(r.id), streak = getStreak(r.id);
+    due.forEach(r => {
+      const done = isDoneToday(r.id), streak = getStreak(r);
       const el = document.createElement('button');
       el.className = 'mb-3 flex items-center rounded-2xl bg-white dark:bg-gray-800 p-4 text-left active:opacity-70';
       el.innerHTML = `
@@ -283,7 +313,7 @@
         <span class="text-2xl">${r.icon}</span>
         <span class="ml-3 flex-1">
           <span class="block text-base font-semibold text-gray-900 dark:text-white">${r.title}</span>
-          <span class="block mt-0.5 text-xs text-gray-500 dark:text-gray-400">${r.category}${r.reminderTime?`  ·  🔔 ${r.reminderTime}`:''}</span>
+          <span class="block mt-0.5 text-xs text-gray-500 dark:text-gray-400">${r.category}  ·  ${scheduleLabel(r)}${r.reminderTime?`  ·  🔔 ${r.reminderTime}`:''}</span>
         </span>
         <button data-edit="${r.id}" class="p-2 text-lg">✏️</button>
         <button data-del="${r.id}" class="p-2 text-lg">🗑️</button>`;
@@ -366,12 +396,27 @@
   };
 
   /* ============================ 모달 (추가/수정) ============================ */
-  let editingId = null, selCat = '건강', selIcon = ICON_OPTIONS[0];
+  let editingId = null, selCat = '건강', selIcon = ICON_OPTIONS[0], selSchedType = 'daily', selDays = [];
   function buildModalPickers(){
     $('#fCats').innerHTML = CATEGORIES.map(c => `<button data-cat="${c}" class="rounded-full px-4 py-2 text-sm font-medium ${c===selCat?'bg-emerald-500 text-white':'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}">${c}</button>`).join('');
     $('#fIcons').innerHTML = ICON_OPTIONS.map(e => `<button data-icon="${e}" class="h-12 w-12 rounded-xl border-2 text-2xl ${e===selIcon?'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10':'border-transparent bg-gray-100 dark:bg-gray-800'}">${e}</button>`).join('');
     $('#fCats').querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { selCat = b.dataset.cat; buildModalPickers(); });
     $('#fIcons').querySelectorAll('[data-icon]').forEach(b => b.onclick = () => { selIcon = b.dataset.icon; buildModalPickers(); });
+    buildSchedule();
+  }
+  function buildSchedule(){
+    const opts = [['daily','매일'],['weekly','특정 요일']];
+    $('#fSchedType').innerHTML = opts.map(([k,l]) => `<button data-st="${k}" class="flex-1 rounded-xl py-2.5 text-sm font-medium ${k===selSchedType?'bg-emerald-500 text-white':'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}">${l}</button>`).join('');
+    $('#fSchedType').querySelectorAll('[data-st]').forEach(b => b.onclick = () => { selSchedType = b.dataset.st; buildSchedule(); });
+    const row = $('#fDaysRow');
+    row.classList.toggle('hidden', selSchedType!=='weekly');
+    row.classList.toggle('flex', selSchedType==='weekly');
+    row.innerHTML = WD.map((label,idx) => {
+      const sel = selDays.includes(idx);
+      const color = sel ? 'text-white' : (idx===0?'text-red-400':idx===6?'text-blue-400':'text-gray-700 dark:text-gray-300');
+      return `<button data-day="${idx}" class="h-10 w-10 rounded-full text-sm font-semibold ${sel?'bg-emerald-500':'bg-gray-100 dark:bg-gray-800'} ${color}">${label}</button>`;
+    }).join('');
+    row.querySelectorAll('[data-day]').forEach(b => b.onclick = () => { const d = +b.dataset.day; selDays = selDays.includes(d) ? selDays.filter(x=>x!==d) : [...selDays, d]; buildSchedule(); });
   }
   function toggleReminderRow(){ $('#fReminderRow').classList.toggle('hidden', !$('#fReminderOn').checked); $('#fReminderRow').classList.toggle('flex', $('#fReminderOn').checked); }
   $('#fReminderOn').onchange = toggleReminderRow;
@@ -379,6 +424,8 @@
     editingId = routine ? routine.id : null;
     selCat = routine ? routine.category : '건강';
     selIcon = routine ? routine.icon : ICON_OPTIONS[0];
+    selSchedType = (routine && routine.schedule && routine.schedule.type) || 'daily';
+    selDays = (routine && routine.schedule && routine.schedule.days) ? [...routine.schedule.days] : [];
     $('#fTitle').value = routine ? routine.title : '';
     $('#fReminderOn').checked = !!(routine && routine.reminderTime);
     $('#fReminderTime').value = (routine && routine.reminderTime) || '09:00';
@@ -391,9 +438,11 @@
   $('#fCancel').onclick = closeModal;
   $('#fSave').onclick = () => {
     const title = $('#fTitle').value.trim(); if (!title) return;
+    if (selSchedType === 'weekly' && selDays.length === 0) { alert('특정 요일을 하나 이상 선택해 주세요.'); return; }
+    const schedule = selSchedType === 'weekly' ? { type:'weekly', days:[...selDays].sort((a,b)=>a-b) } : { type:'daily' };
     const reminderTime = $('#fReminderOn').checked ? $('#fReminderTime').value : undefined;
-    if (editingId) updateRoutine(editingId, { title, category: selCat, icon: selIcon, reminderTime });
-    else addRoutine({ title, category: selCat, icon: selIcon, reminderTime });
+    if (editingId) updateRoutine(editingId, { title, category: selCat, icon: selIcon, schedule, reminderTime });
+    else addRoutine({ title, category: selCat, icon: selIcon, schedule, reminderTime });
     closeModal(); renderAll();
   };
   $('#fab').onclick = () => openModal(null);
@@ -431,6 +480,7 @@
       const p = patterns[idx % patterns.length];
       keys.forEach(k => {
         if (r.createdAt.slice(0,10) > k) return;
+        if (!isDueOn(r, k)) return;
         const completed = Math.random() < p;
         const i = records.findIndex(x => x.routineId===r.id && x.date===k);
         if (i >= 0) records[i].completed = completed; else records.push({ routineId:r.id, date:k, completed });

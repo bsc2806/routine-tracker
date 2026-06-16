@@ -8,6 +8,14 @@ export const ICON_OPTIONS = [
   '🧹', '💊', '🦷', '🎸', '💰', '🙏',
 ];
 
+export type ScheduleType = 'daily' | 'weekly';
+
+export interface Schedule {
+  type: ScheduleType;
+  /** weekly 일 때 반복할 요일 (0=일 ~ 6=토) */
+  days?: number[];
+}
+
 export interface Routine {
   id: string;
   title: string;
@@ -17,10 +25,12 @@ export interface Routine {
   createdAt: string;
   /** 삭제 대신 보관 — 통계 보존용 */
   archived?: boolean;
+  /** 반복 주기. 없으면 매일로 간주(v1 호환) */
+  schedule?: Schedule;
   /** 매일 알림 시각 "HH:mm" (없으면 알림 없음) */
   reminderTime?: string;
-  /** 예약된 로컬 알림 식별자 (취소/재예약용) */
-  notificationId?: string;
+  /** 예약된 로컬 알림 식별자들 (취소/재예약용) */
+  notificationIds?: string[];
 }
 
 export interface RecordEntry {

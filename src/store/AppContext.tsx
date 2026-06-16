@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import {
-  cancelReminder,
+  cancelReminders,
   ensurePermission,
   scheduleRoutineReminder,
 } from '../lib/notifications';
@@ -23,7 +23,7 @@ import {
   saveRoutines,
   saveSettings,
 } from '../storage/storage';
-import { Category, RecordEntry, Routine, Settings, ThemeMode } from '../types';
+import { Category, RecordEntry, Routine, Schedule, Settings, ThemeMode } from '../types';
 import { todayKey } from '../utils/date';
 import { getStreak as calcStreak } from '../utils/stats';
 
@@ -48,6 +48,8 @@ export interface NewRoutineInput {
   title: string;
   category: Category;
   icon: string;
+  /** 반복 주기 (없으면 매일) */
+  schedule?: Schedule;
   /** 매일 알림 시각 "HH:mm" (없으면 알림 끔) */
   reminderTime?: string;
 }
@@ -106,9 +108,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addRoutine = useCallback(async (input: NewRoutineInput) => {
     const routine = makeRoutine(input.title, input.category, input.icon);
+    routine.schedule = input.schedule;
     routine.reminderTime = input.reminderTime;
     if (input.reminderTime && (await ensurePermission())) {
-      routine.notificationId = (await scheduleRoutineReminder(routine)) ?? undefined;
+      routine.notificationIds = await scheduleRoutineReminder(routine);
     }
     setRoutines((prev) => {
       const next = [...prev, routine];
@@ -119,18 +122,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateRoutine = useCallback(async (id: string, patch: NewRoutineInput) => {
     const existing = routinesRef.current.find((r) => r.id === id);
-    // 기존 알림 취소 후 변경된 시각으로 재예약
-    await cancelReminder(existing?.notificationId);
-    let notificationId: string | undefined;
+    // 기존 알림 모두 취소 후 변경된 주기·시각으로 재예약
+    await cancelReminders(existing?.notificationIds);
+    const merged: Routine = {
+      ...(existing as Routine),
+      ...patch,
+      schedule: patch.schedule,
+      reminderTime: patch.reminderTime,
+      notificationIds: undefined,
+    };
+    let notificationIds: string[] | undefined;
     if (patch.reminderTime && (await ensurePermission())) {
-      notificationId =
-        (await scheduleRoutineReminder({ ...(existing as Routine), ...patch, notificationId: undefined })) ??
-        undefined;
+      notificationIds = await scheduleRoutineReminder(merged);
     }
     setRoutines((prev) => {
-      const next = prev.map((r) =>
-        r.id === id ? { ...r, ...patch, reminderTime: patch.reminderTime, notificationId } : r,
-      );
+      const next = prev.map((r) => (r.id === id ? { ...merged, notificationIds } : r));
       saveRoutines(next);
       return next;
     });
@@ -139,10 +145,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // 삭제는 아카이브(통계 보존) + 예약된 알림 취소
   const deleteRoutine = useCallback(async (id: string) => {
     const existing = routinesRef.current.find((r) => r.id === id);
-    await cancelReminder(existing?.notificationId);
+    await cancelReminders(existing?.notificationIds);
     setRoutines((prev) => {
       const next = prev.map((r) =>
-        r.id === id ? { ...r, archived: true, notificationId: undefined } : r,
+        r.id === id ? { ...r, archived: true, notificationIds: undefined } : r,
       );
       saveRoutines(next);
       return next;
@@ -182,8 +188,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const getStreak = useCallback(
-    (routineId: string) => calcStreak(records, routineId),
-    [records],
+    (routineId: string) => {
+      const routine = routines.find((r) => r.id === routineId);
+      return routine ? calcStreak(records, routine) : 0;
+    },
+    [records, routines],
   );
 
   const value = useMemo<AppContextValue>(

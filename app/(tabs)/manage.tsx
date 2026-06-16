@@ -6,6 +6,7 @@ import { RoutineFormModal } from '../../src/components/RoutineFormModal';
 import { NewRoutineInput, useApp } from '../../src/store/AppContext';
 import { Routine } from '../../src/types';
 import { activeRoutines } from '../../src/utils/stats';
+import { scheduleLabel } from '../../src/utils/schedule';
 
 export default function ManageScreen() {
   const { routines, settings, addRoutine, updateRoutine, deleteRoutine, setTheme } = useApp();
@@ -81,6 +82,7 @@ export default function ManageScreen() {
                 </Text>
                 <Text className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                   {routine.category}
+                  {`  ·  ${scheduleLabel(routine)}`}
                   {routine.reminderTime ? `  ·  🔔 ${routine.reminderTime}` : ''}
                 </Text>
               </View>

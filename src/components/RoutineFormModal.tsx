@@ -12,8 +12,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { CATEGORIES, Category, ICON_OPTIONS, Routine } from '../types';
+import { CATEGORIES, Category, ICON_OPTIONS, Routine, ScheduleType } from '../types';
 import { NewRoutineInput } from '../store/AppContext';
+import { WEEKDAY_SHORT } from '../utils/schedule';
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
@@ -48,6 +49,8 @@ export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props)
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<Category>('건강');
   const [icon, setIcon] = useState<string>(ICON_OPTIONS[0]);
+  const [scheduleType, setScheduleType] = useState<ScheduleType>('daily');
+  const [days, setDays] = useState<number[]>([]);
   const [reminderOn, setReminderOn] = useState(false);
   const [time, setTime] = useState<Date>(toTimeDate());
   const [showPicker, setShowPicker] = useState(false);
@@ -57,13 +60,20 @@ export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props)
       setTitle(editing?.title ?? '');
       setCategory(editing?.category ?? '건강');
       setIcon(editing?.icon ?? ICON_OPTIONS[0]);
+      setScheduleType(editing?.schedule?.type ?? 'daily');
+      setDays(editing?.schedule?.days ?? []);
       setReminderOn(!!editing?.reminderTime);
       setTime(toTimeDate(editing?.reminderTime));
       setShowPicker(false);
     }
   }, [visible, editing]);
 
-  const canSubmit = title.trim().length > 0;
+  const toggleDay = (d: number) =>
+    setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
+
+  // 특정 요일 모드인데 요일을 하나도 안 골랐으면 저장 불가
+  const canSubmit =
+    title.trim().length > 0 && (scheduleType === 'daily' || days.length > 0);
 
   const onChangeTime = (event: DateTimePickerEvent, selected?: Date) => {
     // 안드로이드는 선택 즉시 닫힘, iOS 는 인라인 유지
@@ -77,6 +87,10 @@ export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props)
       title: title.trim(),
       category,
       icon,
+      schedule:
+        scheduleType === 'weekly'
+          ? { type: 'weekly', days: [...days].sort((a, b) => a - b) }
+          : { type: 'daily' },
       reminderTime: reminderOn ? formatTime(time) : undefined,
     });
     onClose();
@@ -153,6 +167,71 @@ export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props)
                 );
               })}
             </View>
+
+            {/* 반복 주기 */}
+            <Text className="mb-2 mt-5 text-sm font-medium text-gray-700 dark:text-gray-300">
+              반복
+            </Text>
+            <View className="flex-row gap-2">
+              {(
+                [
+                  { key: 'daily', label: '매일' },
+                  { key: 'weekly', label: '특정 요일' },
+                ] as const
+              ).map((opt) => {
+                const selected = scheduleType === opt.key;
+                return (
+                  <Pressable
+                    key={opt.key}
+                    onPress={() => setScheduleType(opt.key)}
+                    className={`flex-1 items-center rounded-xl py-2.5 ${
+                      selected ? 'bg-emerald-500' : 'bg-gray-100 dark:bg-gray-800'
+                    }`}
+                  >
+                    <Text
+                      className={`text-sm font-medium ${
+                        selected ? 'text-white' : 'text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {scheduleType === 'weekly' && (
+              <View className="mt-3 flex-row justify-between">
+                {WEEKDAY_SHORT.map((label, idx) => {
+                  const selected = days.includes(idx);
+                  const isSun = idx === 0;
+                  const isSat = idx === 6;
+                  return (
+                    <Pressable
+                      key={idx}
+                      onPress={() => toggleDay(idx)}
+                      className={`h-10 w-10 items-center justify-center rounded-full ${
+                        selected ? 'bg-emerald-500' : 'bg-gray-100 dark:bg-gray-800'
+                      }`}
+                    >
+                      <Text
+                        className={`text-sm font-semibold ${
+                          selected
+                            ? 'text-white'
+                            : isSun
+                              ? 'text-red-400'
+                              : isSat
+                                ? 'text-blue-400'
+                                : 'text-gray-700 dark:text-gray-300'
+                        }`}
+                      >
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
 
             {/* 리마인더 알림 */}
             <View className="mt-6 flex-row items-center justify-between">
