@@ -79,6 +79,15 @@ export async function scheduleRoutineReminder(routine: Routine): Promise<string[
   return ids;
 }
 
+/** 예약된 모든 로컬 알림 취소 (복원/초기화 시 사용) */
+export async function cancelAllReminders(): Promise<void> {
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch {
+    // 무시
+  }
+}
+
 /** 예약된 알림들 취소 (없으면 무시) */
 export async function cancelReminders(notificationIds?: string[]): Promise<void> {
   if (!notificationIds?.length) return;

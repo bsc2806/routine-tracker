@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getAdvice, isConfigured } from '../../src/lib/anthropic';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { useApp } from '../../src/store/AppContext';
 
 export default function AdviceScreen() {
@@ -27,9 +28,9 @@ export default function AdviceScreen() {
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-gray-50 dark:bg-gray-950">
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <Text className="text-2xl font-bold text-gray-900 dark:text-white">AI 조언</Text>
-        <Text className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      <ScreenHeader title="AI 조언" />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
+        <Text className="text-sm text-gray-500 dark:text-gray-400">
           최근 7일 루틴 데이터를 분석해 맞춤 조언을 드려요.
         </Text>
 

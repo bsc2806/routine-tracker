@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import {
+  cancelAllReminders,
   cancelReminders,
   ensurePermission,
   scheduleRoutineReminder,
@@ -66,6 +67,10 @@ interface AppContextValue {
   isDoneToday: (routineId: string) => boolean;
   getStreak: (routineId: string) => number;
   setTheme: (theme: ThemeMode) => void;
+  /** 백업 복원: 기존 데이터를 덮어쓰고 알림 재예약 */
+  importData: (routines: Routine[], records: RecordEntry[]) => Promise<void>;
+  /** 전체 초기화: 샘플 3개로 되돌리고 기록 삭제 */
+  resetData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -184,6 +189,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const importData = useCallback(async (newRoutines: Routine[], newRecords: RecordEntry[]) => {
+    // 기존 예약 알림 전부 취소 후, 가져온 루틴에 맞춰 재예약
+    await cancelAllReminders();
+    const rescheduled: Routine[] = [];
+    for (const r of newRoutines) {
+      let notificationIds: string[] | undefined;
+      if (!r.archived && r.reminderTime && (await ensurePermission())) {
+        notificationIds = await scheduleRoutineReminder(r);
+      }
+      rescheduled.push({ ...r, notificationIds });
+    }
+    setRoutines(rescheduled);
+    saveRoutines(rescheduled);
+    setRecords(newRecords);
+    saveRecords(newRecords);
+  }, []);
+
+  const resetData = useCallback(async () => {
+    await cancelAllReminders();
+    const fresh = sampleRoutines();
+    setRoutines(fresh);
+    saveRoutines(fresh);
+    setRecords([]);
+    saveRecords([]);
+    setSettings((prev) => {
+      const next = { ...prev, seeded: true };
+      saveSettings(next);
+      return next;
+    });
+  }, []);
+
   const isDoneToday = useCallback(
     (routineId: string) => {
       const date = todayKey();
@@ -213,6 +249,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isDoneToday,
       getStreak,
       setTheme,
+      importData,
+      resetData,
     }),
     [
       routines,
@@ -226,6 +264,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isDoneToday,
       getStreak,
       setTheme,
+      importData,
+      resetData,
     ],
   );
 

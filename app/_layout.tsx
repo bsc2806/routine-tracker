@@ -15,6 +15,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="routine/[id]" options={{ presentation: 'card' }} />
+          <Stack.Screen name="settings" options={{ presentation: 'card' }} />
         </Stack>
       </AppProvider>
     </SafeAreaProvider>

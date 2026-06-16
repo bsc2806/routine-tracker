@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RoutineFormModal } from '../../src/components/RoutineFormModal';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { NewRoutineInput, useApp } from '../../src/store/AppContext';
 import { Routine } from '../../src/types';
 import { activeRoutines } from '../../src/utils/stats';
 import { scheduleLabel } from '../../src/utils/schedule';
 
 export default function ManageScreen() {
-  const { routines, settings, addRoutine, updateRoutine, deleteRoutine, setTheme } = useApp();
+  const { routines, addRoutine, updateRoutine, deleteRoutine } = useApp();
   const active = activeRoutines(routines);
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -38,34 +39,10 @@ export default function ManageScreen() {
     ]);
   };
 
-  const cycleTheme = () => {
-    const order = ['system', 'light', 'dark'] as const;
-    const next = order[(order.indexOf(settings.theme) + 1) % order.length];
-    setTheme(next);
-  };
-
-  const themeLabel = { system: '시스템', light: '라이트', dark: '다크' }[settings.theme];
-
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-gray-50 dark:bg-gray-950">
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
-        <View className="mb-5 flex-row items-center justify-between">
-          <Text className="text-2xl font-bold text-gray-900 dark:text-white">루틴 관리</Text>
-          <Pressable
-            onPress={cycleTheme}
-            className="flex-row items-center rounded-full bg-white px-3 py-2 active:opacity-70 dark:bg-gray-800"
-          >
-            <Ionicons
-              name={settings.theme === 'dark' ? 'moon' : settings.theme === 'light' ? 'sunny' : 'phone-portrait'}
-              size={14}
-              color="#10b981"
-            />
-            <Text className="ml-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
-              {themeLabel}
-            </Text>
-          </Pressable>
-        </View>
-
+      <ScreenHeader title="루틴 관리" />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}>
         {active.length === 0 ? (
           <Text className="mt-16 text-center text-gray-400 dark:text-gray-500">
             등록된 루틴이 없어요. 아래 버튼으로 추가해 보세요!

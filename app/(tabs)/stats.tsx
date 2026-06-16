@@ -1,5 +1,6 @@
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { useApp } from '../../src/store/AppContext';
 import {
   bestWorst,
@@ -18,11 +19,10 @@ export default function StatsScreen() {
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-gray-50 dark:bg-gray-950">
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <Text className="text-2xl font-bold text-gray-900 dark:text-white">통계</Text>
-
+      <ScreenHeader title="통계" />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
         {/* 주간 달성률 막대 그래프 */}
-        <View className="mt-5 rounded-2xl bg-white p-5 dark:bg-gray-800">
+        <View className="rounded-2xl bg-white p-5 dark:bg-gray-800">
           <View className="mb-4 flex-row items-center justify-between">
             <Text className="text-base font-semibold text-gray-900 dark:text-white">
               주간 달성률
