@@ -6,6 +6,7 @@ const KEYS = {
   records: '@records',
   settings: '@settings',
   weeklyReport: '@weeklyReport',
+  achievementsCelebrated: '@achievementsCelebrated',
 } as const;
 
 const DEFAULT_SETTINGS: Settings = { theme: 'system', seeded: false };
@@ -39,3 +40,8 @@ export const saveSettings = (s: Settings) => writeJSON(KEYS.settings, s);
 
 export const loadWeeklyReport = () => readJSON<WeeklyReport | null>(KEYS.weeklyReport, null);
 export const saveWeeklyReport = (r: WeeklyReport) => writeJSON(KEYS.weeklyReport, r);
+
+export const loadAchievementsCelebrated = () =>
+  readJSON<boolean>(KEYS.achievementsCelebrated, false);
+export const saveAchievementsCelebrated = (v: boolean) =>
+  writeJSON(KEYS.achievementsCelebrated, v);

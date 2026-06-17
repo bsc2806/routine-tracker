@@ -6,6 +6,7 @@ import { CelebrationOverlay } from '../../src/components/CelebrationOverlay';
 import { HomeHeader } from '../../src/components/HomeHeader';
 import { ProgressBar } from '../../src/components/ProgressBar';
 import { RoutineCheckItem } from '../../src/components/RoutineCheckItem';
+import { SectionLabel } from '../../src/components/SectionLabel';
 import { useApp } from '../../src/store/AppContext';
 import { activeRoutines, dueTodayRoutines, todayProgress } from '../../src/utils/stats';
 
@@ -34,6 +35,21 @@ export default function HomeScreen() {
       : done === total
         ? '오늘 루틴을 모두 끝냈어요! 🎉'
         : `${total - done}개 남았어요. 조금만 더 화이팅! 💪`;
+
+  const buildDue = due.filter((r) => r.kind !== 'avoid');
+  const avoidDue = due.filter((r) => r.kind === 'avoid');
+  const showGroups = buildDue.length > 0 && avoidDue.length > 0;
+
+  const renderItem = (r: (typeof due)[number]) => (
+    <RoutineCheckItem
+      key={r.id}
+      routine={r}
+      completed={isDoneToday(r.id)}
+      streak={getStreak(r.id)}
+      onToggle={() => handleToggle(r.id)}
+      onOpen={() => router.push(`/routine/${r.id}`)}
+    />
+  );
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-gray-50 dark:bg-gray-950">
@@ -70,16 +86,12 @@ export default function HomeScreen() {
             </Text>
           </View>
         ) : (
-          due.map((r) => (
-            <RoutineCheckItem
-              key={r.id}
-              routine={r}
-              completed={isDoneToday(r.id)}
-              streak={getStreak(r.id)}
-              onToggle={() => handleToggle(r.id)}
-              onOpen={() => router.push(`/routine/${r.id}`)}
-            />
-          ))
+          <>
+            {showGroups && <SectionLabel text="✅ 실천" />}
+            {buildDue.map(renderItem)}
+            {showGroups && <SectionLabel text="🛡️ 유지" />}
+            {avoidDue.map(renderItem)}
+          </>
         )}
       </ScrollView>
 

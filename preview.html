@@ -36,7 +36,10 @@
       <div class="flex items-start justify-between">
         <div>
           <h2 id="greeting" class="text-2xl font-bold text-gray-900 dark:text-white"></h2>
-          <p id="todayLabel" class="mt-1 text-sm text-gray-500 dark:text-gray-400"></p>
+          <div class="mt-1 flex items-center">
+            <p id="todayLabel" class="text-sm text-gray-500 dark:text-gray-400"></p>
+            <span id="titleChip" class="ml-2 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400"></span>
+          </div>
         </div>
         <button class="goSettings h-10 w-10 flex items-center justify-center rounded-full bg-white dark:bg-gray-800 text-lg">⚙️</button>
       </div>
@@ -78,6 +81,16 @@
       <div id="highlights" class="mt-4 flex gap-3"></div>
       <h3 class="mb-3 mt-6 text-base font-semibold text-gray-900 dark:text-white">루틴별 달성률 (최근 7일)</h3>
       <div id="rateList"></div>
+
+      <div class="mb-3 mt-7 flex items-center justify-between">
+        <span class="text-base font-semibold text-gray-900 dark:text-white">🏅 성취</span>
+        <span id="badgeCount" class="text-sm font-bold text-emerald-600 dark:text-emerald-400"></span>
+      </div>
+      <div id="badgeGrid" class="flex flex-wrap justify-between"></div>
+
+      <h3 class="mb-3 mt-7 text-base font-semibold text-gray-900 dark:text-white">🏆 기록 경신</h3>
+      <div id="recordRow" class="flex gap-3"></div>
+      <p class="mt-2 px-1 text-xs text-gray-400">내 최고 기록에 도전해 보세요. 천장 없이 계속 갱신돼요.</p>
     </section>
 
     <!-- ADVICE -->
@@ -115,6 +128,16 @@
       </div>
     </div>
 
+    <!-- Ceremony (전체 성취 달성, 1회성, 탭하여 닫기) -->
+    <div id="ceremony" class="absolute inset-0 hidden items-center justify-center bg-black/40 z-50">
+      <div class="mx-6 rounded-3xl bg-white dark:bg-gray-800 px-8 py-6 text-center">
+        <p class="text-5xl mb-2">👑</p>
+        <p class="text-lg font-bold text-gray-900 dark:text-white">명예의 전당 입성!</p>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">모든 성취를 달성했어요.<br>배지는 표식일 뿐, 당신은 이미 습관을 만들었어요.</p>
+        <p class="mt-3 text-xs text-gray-400">탭하여 닫기</p>
+      </div>
+    </div>
+
     <!-- Routine form modal -->
     <div id="modal" class="absolute inset-0 hidden items-end bg-black/40 z-30">
       <div class="w-full rounded-t-3xl bg-white dark:bg-gray-900 p-6 max-h-[88%] overflow-y-auto">
@@ -122,6 +145,8 @@
         <h3 id="modalTitle" class="mb-5 text-xl font-bold text-gray-900 dark:text-white">새 루틴 추가</h3>
         <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">제목</label>
         <input id="fTitle" placeholder="예: 아침 스트레칭" class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 text-base text-gray-900 dark:text-white outline-none" />
+        <label class="mb-2 mt-5 block text-sm font-medium text-gray-700 dark:text-gray-300">유형</label>
+        <div id="fKind" class="flex gap-2"></div>
         <label class="mb-2 mt-5 block text-sm font-medium text-gray-700 dark:text-gray-300">카테고리</label>
         <div id="fCats" class="flex flex-wrap gap-2"></div>
         <label class="mb-2 mt-5 block text-sm font-medium text-gray-700 dark:text-gray-300">아이콘</label>
@@ -217,7 +242,9 @@
 
   // ---- types.ts ----
   const CATEGORIES = ['건강', '학습', '자기계발', '생활', '재테크'];
-  const ICON_OPTIONS = ['💪','💧','📚','🏃','🧘','🥗','😴','✍️','🎯','🌱','☀️','🎨','🧹','💊','🦷','🎸','💰','🙏'];
+  const ICON_OPTIONS = ['💪','💧','📚','🏃','🧘','🥗','😴','✍️','🎯','🌱','☀️','🎨','🧹','💊','🦷','🎸','💰','🙏','🚭','🚫','🍺','📵'];
+  const isAvoid = r => r.kind === 'avoid';
+  const streakLabel = (r, s) => s <= 0 ? '' : (isAvoid(r) ? `🛡️ ${s}일째 유지` : `🔥 ${s}일 연속`);
 
   // ---- storage.ts (localStorage 래퍼) ----
   const K = { routines: '@routines', records: '@records', settings: '@settings' };
@@ -265,7 +292,7 @@
   const persist = () => { write(K.routines, routines); write(K.records, records); write(K.settings, settings); };
   const activeRoutines = () => routines.filter(r => !r.archived);
 
-  function addRoutine(input){ const r = mkRoutine(input.title, input.category, input.icon); r.schedule = input.schedule; r.reminderTime = input.reminderTime; routines = [...routines, r]; persist(); }
+  function addRoutine(input){ const r = mkRoutine(input.title, input.category, input.icon); r.kind = input.kind; r.schedule = input.schedule; r.reminderTime = input.reminderTime; routines = [...routines, r]; persist(); }
   function updateRoutine(id, patch){ routines = routines.map(r => r.id===id ? {...r, ...patch} : r); persist(); }
   function deleteRoutine(id){ routines = routines.map(r => r.id===id ? {...r, archived:true} : r); persist(); } // 아카이브
   function toggleOn(id, date){
@@ -346,6 +373,7 @@
 
   /* ============================ 렌더링 ============================ */
   const $ = s => document.querySelector(s);
+  function sectionLabel(text){ const e = document.createElement('p'); e.className = 'mb-2 mt-1 text-xs font-semibold text-gray-400 dark:text-gray-500'; e.textContent = text; return e; }
   function greetingText(d){ const h=d.getHours(); if(h<5)return '편안한 밤이에요'; if(h<12)return '좋은 아침이에요'; if(h<18)return '좋은 오후예요'; return '좋은 저녁이에요'; }
   const _now = new Date();
   document.getElementById('todayLabel').textContent = formatKorean(_now);
@@ -360,7 +388,7 @@
     } else if (!due.length) {
       list.innerHTML = `<div class="mt-16 text-center"><p class="text-4xl">☕</p><p class="mt-3 text-gray-400">오늘은 예정된 루틴이 없어요.<br>푹 쉬어가는 것도 습관의 일부예요!</p></div>`;
     }
-    due.forEach(r => {
+    const homeRow = (r) => {
       const done = isDoneToday(r.id), streak = getStreak(r);
       const el = document.createElement('div');
       el.className = 'mb-3 flex items-center rounded-2xl bg-white dark:bg-gray-800 p-4';
@@ -369,7 +397,7 @@
           <span class="text-2xl">${r.icon}</span>
           <span class="ml-3 flex-1">
             <span class="block text-base font-semibold text-gray-900 dark:text-white">${r.title}</span>
-            <span class="block mt-0.5 text-xs text-gray-500 dark:text-gray-400">${r.category}${streak>0?`  ·  🔥 ${streak}일 연속`:''}${r.reminderTime?`  ·  🔔 ${r.reminderTime}`:''}</span>
+            <span class="block mt-0.5 text-xs text-gray-500 dark:text-gray-400">${r.category}${streak>0?`  ·  ${streakLabel(r, streak)}`:''}${r.reminderTime?`  ·  🔔 ${r.reminderTime}`:''}</span>
           </span>
         </button>
         <button class="chk ml-3 h-7 w-7 flex items-center justify-center rounded-full border-2 ${done?'bg-emerald-500 border-emerald-500':'border-gray-300 dark:border-gray-600'}">
@@ -386,12 +414,21 @@
         }
         renderAll();
       };
-      list.appendChild(el);
-    });
+      return el;
+    };
+    const buildDue = due.filter(r => r.kind !== 'avoid');
+    const avoidDue = due.filter(r => r.kind === 'avoid');
+    const showGroups = buildDue.length > 0 && avoidDue.length > 0;
+    if (showGroups) list.appendChild(sectionLabel('✅ 실천'));
+    buildDue.forEach(r => list.appendChild(homeRow(r)));
+    if (showGroups) list.appendChild(sectionLabel('🛡️ 유지'));
+    avoidDue.forEach(r => list.appendChild(homeRow(r)));
+
     const { done, total, ratio } = todayProgress();
     $('#homeRatio').textContent = `${done}/${total} 완료`;
     $('#homeBar').style.width = `${Math.round(ratio*100)}%`;
     $('#homeMotivation').textContent = total===0 ? '오늘은 예정된 루틴이 없어요.' : done===total ? '오늘 루틴을 모두 끝냈어요! 🎉' : `${total-done}개 남았어요. 조금만 더 화이팅! 💪`;
+    $('#titleChip').textContent = '🏅 ' + currentTitle(computeBadges());
   }
 
   function showCelebrate(){
@@ -402,8 +439,8 @@
   function renderManage(){
     const list = $('#manageList'); list.innerHTML = '';
     const act = activeRoutines();
-    if (!act.length) list.innerHTML = `<p class="mt-16 text-center text-gray-400">등록된 루틴이 없어요. + 버튼으로 추가해 보세요!</p>`;
-    act.forEach(r => {
+    if (!act.length) { list.innerHTML = `<p class="mt-16 text-center text-gray-400">등록된 루틴이 없어요. + 버튼으로 추가해 보세요!</p>`; return; }
+    const manageRow = (r) => {
       const el = document.createElement('div');
       el.className = 'mb-3 flex items-center rounded-2xl bg-white dark:bg-gray-800 p-4';
       el.innerHTML = `
@@ -419,8 +456,15 @@
       el.querySelector('.open').onclick = () => openDetail(r.id);
       el.querySelector('[data-edit]').onclick = () => openModal(r);
       el.querySelector('[data-del]').onclick = () => { if (confirm(`'${r.title}' 루틴을 삭제할까요?`)) { deleteRoutine(r.id); renderAll(); } };
-      list.appendChild(el);
-    });
+      return el;
+    };
+    const buildList = act.filter(r => r.kind !== 'avoid');
+    const avoidList = act.filter(r => r.kind === 'avoid');
+    const showGroups = buildList.length > 0 && avoidList.length > 0;
+    if (showGroups) list.appendChild(sectionLabel('✅ 실천형'));
+    buildList.forEach(r => list.appendChild(manageRow(r)));
+    if (showGroups) list.appendChild(sectionLabel('🛡️ 유지형'));
+    avoidList.forEach(r => list.appendChild(manageRow(r)));
   }
 
   function renderStats(){
@@ -449,7 +493,7 @@
         <p class="mt-0.5 text-sm font-semibold text-orange-500">${Math.round(worst.rate*100)}%</p>
       </div>` : '';
 
-    $('#rateList').innerHTML = rates.length ? rates.map(r => {
+    const rateBar = (r) => {
       const pct = Math.round(r.rate*100);
       return `<div class="mb-4">
         <div class="mb-1.5 flex justify-between">
@@ -460,7 +504,79 @@
           <div class="h-full rounded-full bg-emerald-500" style="width:${Math.max(2,pct)}%"></div>
         </div>
       </div>`;
-    }).join('') : `<p class="mt-4 text-center text-gray-400">데이터가 없어요. 루틴을 체크해 보세요!</p>`;
+    };
+    const labelHTML = t => `<p class="mb-2 mt-1 text-xs font-semibold text-gray-400 dark:text-gray-500">${t}</p>`;
+    const bRates = rates.filter(r => r.routine.kind !== 'avoid');
+    const aRates = rates.filter(r => r.routine.kind === 'avoid');
+    const showRG = bRates.length > 0 && aRates.length > 0;
+    $('#rateList').innerHTML = rates.length
+      ? (showRG ? labelHTML('✅ 실천형') : '') + bRates.map(rateBar).join('') + (showRG ? labelHTML('🛡️ 유지형') : '') + aRates.map(rateBar).join('')
+      : `<p class="mt-4 text-center text-gray-400">데이터가 없어요. 루틴을 체크해 보세요!</p>`;
+
+    // 성취 배지
+    const badges = computeBadges();
+    $('#badgeCount').textContent = `${badges.filter(b=>b.earned).length}/${badges.length}`;
+    $('#badgeGrid').innerHTML = badges.map(b => {
+      const pct = Math.round(b.current/b.target*100);
+      const foot = b.earned
+        ? `<span class="mt-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">획득 ✓</span>`
+        : `<div class="mt-1.5 w-full"><div class="h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"><div class="h-full rounded-full bg-emerald-500" style="width:${pct}%"></div></div><span class="block mt-1 text-center text-[10px] text-gray-400">${b.current}/${b.target}</span></div>`;
+      return `<div class="mb-3 w-[31%] flex flex-col items-center rounded-2xl bg-white dark:bg-gray-800 p-3"><span class="text-3xl ${b.earned?'':'opacity-25'}">${b.icon}</span><span class="mt-1 text-center text-xs font-semibold ${b.earned?'text-gray-900 dark:text-white':'text-gray-400 dark:text-gray-500'}">${b.title}</span>${foot}</div>`;
+    }).join('');
+
+    // 기록 경신
+    const rec = computeRecords();
+    $('#recordRow').innerHTML = [['최장 연속',rec.bestStreak,'일'],['누적 완료',rec.totalDone,'회'],['완벽한 하루',rec.perfectDays,'일']]
+      .map(([l,v,u]) => `<div class="flex-1 flex flex-col items-center rounded-2xl bg-white dark:bg-gray-800 p-4"><p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">${v}<span class="text-xs font-normal text-gray-400"> ${u}</span></p><p class="mt-1 text-xs text-gray-500 dark:text-gray-400">${l}</p></div>`).join('');
+
+    // 전체 성취 달성 1회성 세리머니
+    const allEarned = badges.length && badges.every(b => b.earned);
+    const CKEY = '@achievementsCelebrated', celebrated = localStorage.getItem(CKEY) === 'true';
+    if (allEarned && !celebrated) { showCeremony(); localStorage.setItem(CKEY, 'true'); }
+    else if (!allEarned && celebrated) { localStorage.setItem(CKEY, 'false'); }
+  }
+  function showCeremony(){ const c = $('#ceremony'); c.classList.remove('hidden'); c.classList.add('flex'); }
+  function currentTitle(badges){
+    const e = badges.filter(b=>b.earned).length, total = badges.length;
+    if (e>=total) return '습관의 달인';
+    if (e>=9) return '고수';
+    if (e>=6) return '숙련자';
+    if (e>=3) return '수련생';
+    if (e>=1) return '입문자';
+    return '새싹';
+  }
+  function computeRecords(){
+    const total = records.filter(r=>r.completed).length;
+    const bestStreak = routines.reduce((m,r)=>Math.max(m, getLongestStreak(r)), 0);
+    const active = activeRoutines(), done = completedSet();
+    const dates = [...new Set(records.filter(r=>r.completed).map(r=>r.date))];
+    let perfect = 0;
+    for (const date of dates){ const due = active.filter(r=> r.createdAt.slice(0,10)<=date && isDueOn(r,date)); if (due.length && due.every(r=>done.has(r.id+'|'+date))) perfect++; }
+    return { bestStreak, totalDone: total, perfectDays: perfect };
+  }
+
+  // ----- 성취 배지 (achievements.ts 미러) -----
+  function computeBadges(){
+    const total = records.filter(r=>r.completed).length;
+    const streak = routines.reduce((m,r)=>Math.max(m, getLongestStreak(r)), 0);
+    const active = activeRoutines(), done = completedSet();
+    const dates = [...new Set(records.filter(r=>r.completed).map(r=>r.date))];
+    let perfect = 0;
+    for (const date of dates){ const due = active.filter(r=> r.createdAt.slice(0,10)<=date && isDueOn(r,date)); if (due.length && due.every(r=>done.has(r.id+'|'+date))) perfect++; }
+    const defs = [
+      { id:'first', icon:'🌱', title:'첫 걸음', current: total, target: 1 },
+      { id:'streak3', icon:'🔥', title:'작심삼일 탈출', current: streak, target: 3 },
+      { id:'streak7', icon:'🔥', title:'일주일 연속', current: streak, target: 7 },
+      { id:'streak14', icon:'🔥', title:'2주 연속', current: streak, target: 14 },
+      { id:'streak30', icon:'🏆', title:'한 달 연속', current: streak, target: 30 },
+      { id:'streak100', icon:'💯', title:'백일의 약속', current: streak, target: 100 },
+      { id:'perfect1', icon:'🌟', title:'완벽한 하루', current: perfect, target: 1 },
+      { id:'perfect7', icon:'✨', title:'완벽한 7일', current: perfect, target: 7 },
+      { id:'total50', icon:'✅', title:'꾸준함의 시작', current: total, target: 50 },
+      { id:'total100', icon:'🎖️', title:'백 번의 실천', current: total, target: 100 },
+      { id:'total365', icon:'👑', title:'습관의 달인', current: total, target: 365 },
+    ];
+    return defs.map(d => ({ ...d, earned: d.current>=d.target, current: Math.min(d.current,d.target) }));
   }
 
   function renderAll(){ renderHome(); renderManage(); renderStats(); }
@@ -496,6 +612,7 @@
   // ----- 주간 리포트 (목) -----
   function weekStartKey(){ const d=new Date(); const off=(d.getDay()+6)%7; return toDateKey(addDays(d,-off)); }
   const RKEY = '@weeklyReport';
+  const MAX_GEN = 3; // 주당 생성 횟수 (비용 통제)
   function loadReport(){ try { return JSON.parse(localStorage.getItem(RKEY)); } catch { return null; } }
   function mockWeeklyReport(){
     const rates = routineRates(7), week = weeklyData();
@@ -509,27 +626,41 @@
     const rep = loadReport(), area = $('#reportArea');
     if (rep && rep.weekStart === weekStartKey()){
       const dt = new Date(rep.generatedAt);
-      area.innerHTML = `<div class="mb-3 flex items-center justify-between"><span class="text-base font-bold text-gray-900 dark:text-white">이번 주 리포트</span><span class="text-xs text-gray-400">${dt.getMonth()+1}월 ${dt.getDate()}일 생성</span></div><p class="text-[15px] leading-7 text-gray-700 dark:text-gray-200 whitespace-pre-line">${rep.text}</p><button id="genReport" class="mt-4 w-full rounded-xl bg-gray-100 dark:bg-gray-700 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300">↻ 다시 생성</button>`;
+      const used = rep.generations || 1, remaining = MAX_GEN - used;
+      const btn = remaining > 0
+        ? `<button id="genReport" class="mt-4 w-full rounded-xl bg-gray-100 dark:bg-gray-700 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300">↻ 다시 생성 (이번 주 ${remaining}회 남음)</button>`
+        : `<button disabled class="mt-4 w-full rounded-xl bg-gray-100/60 dark:bg-gray-700/50 py-2.5 text-sm font-medium text-gray-400">이번 주 생성 횟수 소진</button>`;
+      area.innerHTML = `<div class="mb-3 flex items-center justify-between"><span class="text-base font-bold text-gray-900 dark:text-white">이번 주 리포트</span><span class="text-xs text-gray-400">${dt.getMonth()+1}월 ${dt.getDate()}일 생성</span></div><p class="text-[15px] leading-7 text-gray-700 dark:text-gray-200 whitespace-pre-line">${rep.text}</p>${btn}`;
     } else {
       area.innerHTML = `<p class="text-sm leading-6 text-gray-500 dark:text-gray-400">이번 주 한 주를 돌아보는 요약과 다음 주 목표를 AI가 정리해 드려요.</p><button id="genReport" class="mt-4 w-full rounded-xl bg-emerald-500 py-3 text-base font-semibold text-white">📄 주간 리포트 생성</button>`;
     }
-    $('#genReport').onclick = generateReport;
+    const g = $('#genReport'); if (g && !g.disabled) g.onclick = generateReport;
   }
   function generateReport(){
+    const rep = loadReport();
+    const sameWeek = rep && rep.weekStart === weekStartKey();
+    const used = sameWeek ? (rep.generations || 0) : 0;
+    if (used >= MAX_GEN) { alert(`이번 주 생성 횟수(${MAX_GEN}회)를 모두 사용했어요. 다음 주에 다시 받을 수 있어요.`); return; }
     $('#reportArea').innerHTML = '<p class="py-4 text-center text-sm text-gray-400">리포트를 생성하는 중이에요...</p>';
     setTimeout(() => {
-      localStorage.setItem(RKEY, JSON.stringify({ weekStart: weekStartKey(), text: mockWeeklyReport(), generatedAt: new Date().toISOString() }));
+      localStorage.setItem(RKEY, JSON.stringify({ weekStart: weekStartKey(), text: mockWeeklyReport(), generatedAt: new Date().toISOString(), generations: used + 1 }));
       renderReport();
     }, 1200);
   }
 
   /* ============================ 모달 (추가/수정) ============================ */
-  let editingId = null, selCat = '건강', selIcon = ICON_OPTIONS[0], selSchedType = 'daily', selDays = [];
+  let editingId = null, selKind = 'build', selCat = '건강', selIcon = ICON_OPTIONS[0], selSchedType = 'daily', selDays = [];
+  function buildKind(){
+    const opts = [['build','실천형','할 일을 하기'],['avoid','유지형','안 하기 (금주·금연)']];
+    $('#fKind').innerHTML = opts.map(([k,l,d]) => `<button data-kind="${k}" class="flex-1 rounded-xl border-2 p-3 text-left ${k===selKind?'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10':'border-transparent bg-gray-100 dark:bg-gray-800'}"><span class="block text-sm font-semibold ${k===selKind?'text-emerald-600 dark:text-emerald-400':'text-gray-700 dark:text-gray-300'}">${l}</span><span class="block mt-0.5 text-[11px] text-gray-400">${d}</span></button>`).join('');
+    $('#fKind').querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { selKind = b.dataset.kind; buildKind(); });
+  }
   function buildModalPickers(){
     $('#fCats').innerHTML = CATEGORIES.map(c => `<button data-cat="${c}" class="rounded-full px-4 py-2 text-sm font-medium ${c===selCat?'bg-emerald-500 text-white':'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}">${c}</button>`).join('');
     $('#fIcons').innerHTML = ICON_OPTIONS.map(e => `<button data-icon="${e}" class="h-12 w-12 rounded-xl border-2 text-2xl ${e===selIcon?'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10':'border-transparent bg-gray-100 dark:bg-gray-800'}">${e}</button>`).join('');
     $('#fCats').querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { selCat = b.dataset.cat; buildModalPickers(); });
     $('#fIcons').querySelectorAll('[data-icon]').forEach(b => b.onclick = () => { selIcon = b.dataset.icon; buildModalPickers(); });
+    buildKind();
     buildSchedule();
   }
   function buildSchedule(){
@@ -550,6 +681,7 @@
   $('#fReminderOn').onchange = toggleReminderRow;
   function openModal(routine){
     editingId = routine ? routine.id : null;
+    selKind = (routine && routine.kind) || 'build';
     selCat = routine ? routine.category : '건강';
     selIcon = routine ? routine.icon : ICON_OPTIONS[0];
     selSchedType = (routine && routine.schedule && routine.schedule.type) || 'daily';
@@ -569,8 +701,8 @@
     if (selSchedType === 'weekly' && selDays.length === 0) { alert('특정 요일을 하나 이상 선택해 주세요.'); return; }
     const schedule = selSchedType === 'weekly' ? { type:'weekly', days:[...selDays].sort((a,b)=>a-b) } : { type:'daily' };
     const reminderTime = $('#fReminderOn').checked ? $('#fReminderTime').value : undefined;
-    if (editingId) updateRoutine(editingId, { title, category: selCat, icon: selIcon, schedule, reminderTime });
-    else addRoutine({ title, category: selCat, icon: selIcon, schedule, reminderTime });
+    if (editingId) updateRoutine(editingId, { title, kind: selKind, category: selCat, icon: selIcon, schedule, reminderTime });
+    else addRoutine({ title, kind: selKind, category: selCat, icon: selIcon, schedule, reminderTime });
     closeModal(); renderAll();
   };
   $('#fab').onclick = () => openModal(null);
@@ -589,7 +721,7 @@
 
   function renderDetail(){
     const r = routines.find(x => x.id === detailId); if (!r){ closeDetail(); return; }
-    const today = todayKey(), done = completedSet();
+    const today = todayKey(), done = completedSet(), av = isAvoid(r);
     const minEditKey = toDateKey(addDays(new Date(), -6)); // 최근 7일
     const weeks = monthMatrix(detYear, detMonth);
     let cal = '';
@@ -618,9 +750,9 @@
         </div>
       </div>
       <div class="mt-4 flex gap-3">
-        ${statCard('현재 스트릭','🔥 '+getStreak(r),'일')}
-        ${statCard('최장 스트릭','🏆 '+getLongestStreak(r),'일')}
-        ${statCard('30일 달성률', Math.round(rateForRoutine(r,30).rate*100), '%')}
+        ${statCard(av?'유지 일수':'현재 스트릭', (av?'🛡️ ':'🔥 ')+getStreak(r), '일')}
+        ${statCard(av?'최장 유지':'최장 스트릭', '🏆 '+getLongestStreak(r), '일')}
+        ${statCard(av?'30일 유지율':'30일 달성률', Math.round(rateForRoutine(r,30).rate*100), '%')}
       </div>
       <div class="mt-4 rounded-2xl bg-white dark:bg-gray-800 p-5">
         <div class="mb-4 flex items-center justify-between">
@@ -631,7 +763,7 @@
         <div class="mb-1 flex">${WD.map((w,i)=>`<span class="flex-1 text-center text-xs ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}">${w}</span>`).join('')}</div>
         ${cal}
         <div class="mt-4 flex flex-wrap gap-x-4 gap-y-1.5">
-          ${legend('bg-emerald-500','완료')}${legend('border-2 border-rose-300','놓침')}${legend('border border-dashed border-gray-300','예정')}${legend('','쉬는 날')}
+          ${legend('bg-emerald-500',av?'지킴':'완료')}${legend('border-2 border-rose-300',av?'실패':'놓침')}${legend('border border-dashed border-gray-300','예정')}${legend('','쉬는 날')}
         </div>
         <p class="mt-3 text-xs text-gray-400">최근 7일 이내의 기록만 눌러서 수정할 수 있어요.</p>
       </div>`;
@@ -661,6 +793,7 @@
   function closeSettings(){ $('#settings').classList.add('hidden'); $('#settings').classList.remove('flex'); }
   document.querySelectorAll('.goSettings').forEach(b => b.onclick = openSettings);
   $('#settingsBack').onclick = closeSettings;
+  $('#ceremony').onclick = () => { const c = $('#ceremony'); c.classList.add('hidden'); c.classList.remove('flex'); };
 
   function renderThemeSeg(){
     const opts = [['system','⚙️','시스템'],['light','☀️','라이트'],['dark','🌙','다크']];
@@ -730,7 +863,7 @@
   };
   $('#resetData').onclick = () => {
     if (!confirm('모든 데이터를 지우고 첫 실행 상태(샘플 3개)로 되돌릴까요?')) return;
-    localStorage.removeItem(K.routines); localStorage.removeItem(K.records); localStorage.removeItem(K.settings); localStorage.removeItem('@weeklyReport');
+    localStorage.removeItem(K.routines); localStorage.removeItem(K.records); localStorage.removeItem(K.settings); localStorage.removeItem('@weeklyReport'); localStorage.removeItem('@achievementsCelebrated');
     location.reload();
   };
 

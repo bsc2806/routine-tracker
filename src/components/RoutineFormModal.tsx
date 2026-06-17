@@ -12,7 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { CATEGORIES, Category, ICON_OPTIONS, Routine, ScheduleType } from '../types';
+import { CATEGORIES, Category, ICON_OPTIONS, Routine, RoutineKind, ScheduleType } from '../types';
 import { NewRoutineInput } from '../store/AppContext';
 import { WEEKDAY_SHORT } from '../utils/schedule';
 
@@ -47,6 +47,7 @@ interface Props {
 
 export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props) {
   const [title, setTitle] = useState('');
+  const [kind, setKind] = useState<RoutineKind>('build');
   const [category, setCategory] = useState<Category>('건강');
   const [icon, setIcon] = useState<string>(ICON_OPTIONS[0]);
   const [scheduleType, setScheduleType] = useState<ScheduleType>('daily');
@@ -58,6 +59,7 @@ export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props)
   useEffect(() => {
     if (visible) {
       setTitle(editing?.title ?? '');
+      setKind(editing?.kind ?? 'build');
       setCategory(editing?.category ?? '건강');
       setIcon(editing?.icon ?? ICON_OPTIONS[0]);
       setScheduleType(editing?.schedule?.type ?? 'daily');
@@ -85,6 +87,7 @@ export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props)
     if (!canSubmit) return;
     onSubmit({
       title: title.trim(),
+      kind,
       category,
       icon,
       schedule:
@@ -117,6 +120,43 @@ export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props)
               placeholderTextColor="#9ca3af"
               className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
+
+            {/* 유형 */}
+            <Text className="mb-2 mt-5 text-sm font-medium text-gray-700 dark:text-gray-300">
+              유형
+            </Text>
+            <View className="flex-row gap-2">
+              {(
+                [
+                  { key: 'build', label: '실천형', desc: '할 일을 하기' },
+                  { key: 'avoid', label: '유지형', desc: '안 하기 (금주·금연)' },
+                ] as const
+              ).map((opt) => {
+                const selected = kind === opt.key;
+                return (
+                  <Pressable
+                    key={opt.key}
+                    onPress={() => setKind(opt.key)}
+                    className={`flex-1 rounded-xl border-2 p-3 ${
+                      selected
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10'
+                        : 'border-transparent bg-gray-100 dark:bg-gray-800'
+                    }`}
+                  >
+                    <Text
+                      className={`text-sm font-semibold ${
+                        selected
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      {opt.label}
+                    </Text>
+                    <Text className="mt-0.5 text-[11px] text-gray-400">{opt.desc}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
             {/* 카테고리 */}
             <Text className="mb-2 mt-5 text-sm font-medium text-gray-700 dark:text-gray-300">

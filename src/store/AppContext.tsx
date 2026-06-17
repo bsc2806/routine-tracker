@@ -24,7 +24,15 @@ import {
   saveRoutines,
   saveSettings,
 } from '../storage/storage';
-import { Category, RecordEntry, Routine, Schedule, Settings, ThemeMode } from '../types';
+import {
+  Category,
+  RecordEntry,
+  Routine,
+  RoutineKind,
+  Schedule,
+  Settings,
+  ThemeMode,
+} from '../types';
 import { todayKey } from '../utils/date';
 import { getStreak as calcStreak } from '../utils/stats';
 
@@ -49,6 +57,8 @@ export interface NewRoutineInput {
   title: string;
   category: Category;
   icon: string;
+  /** 루틴 유형 (없으면 실천형) */
+  kind?: RoutineKind;
   /** 반복 주기 (없으면 매일) */
   schedule?: Schedule;
   /** 매일 알림 시각 "HH:mm" (없으면 알림 끔) */
@@ -114,6 +124,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addRoutine = useCallback(async (input: NewRoutineInput) => {
     const routine = makeRoutine(input.title, input.category, input.icon);
+    routine.kind = input.kind;
     routine.schedule = input.schedule;
     routine.reminderTime = input.reminderTime;
     if (input.reminderTime && (await ensurePermission())) {

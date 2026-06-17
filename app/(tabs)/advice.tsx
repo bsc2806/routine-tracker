@@ -9,6 +9,9 @@ import { useApp } from '../../src/store/AppContext';
 import { WeeklyReport } from '../../src/types';
 import { weekStartKey } from '../../src/utils/date';
 
+/** 주간 리포트 재생성 비용 통제: 한 주에 최대 생성 횟수 */
+const MAX_WEEKLY_GENERATIONS = 3;
+
 export default function AdviceScreen() {
   const { routines, records } = useApp();
   const configured = isConfigured();
@@ -28,8 +31,16 @@ export default function AdviceScreen() {
   }, []);
 
   const isThisWeek = report?.weekStart === weekStartKey();
+  const usedThisWeek = isThisWeek ? (report?.generations ?? 0) : 0;
+  const remaining = MAX_WEEKLY_GENERATIONS - usedThisWeek;
 
   const generateReport = async () => {
+    if (remaining <= 0) {
+      setReportError(
+        `이번 주 생성 횟수(${MAX_WEEKLY_GENERATIONS}회)를 모두 사용했어요. 다음 주에 다시 받을 수 있어요.`,
+      );
+      return;
+    }
     setReportLoading(true);
     setReportError(null);
     try {
@@ -38,6 +49,7 @@ export default function AdviceScreen() {
         weekStart: weekStartKey(),
         text,
         generatedAt: new Date().toISOString(),
+        generations: usedThisWeek + 1,
       };
       await saveWeeklyReport(next);
       setReport(next);
@@ -100,8 +112,10 @@ export default function AdviceScreen() {
               </Text>
               <Pressable
                 onPress={generateReport}
-                disabled={reportLoading || !configured}
-                className="mt-4 flex-row items-center justify-center rounded-xl bg-gray-100 py-2.5 active:opacity-70 dark:bg-gray-700"
+                disabled={reportLoading || !configured || remaining <= 0}
+                className={`mt-4 flex-row items-center justify-center rounded-xl py-2.5 dark:bg-gray-700 ${
+                  remaining <= 0 ? 'bg-gray-100/60 dark:bg-gray-700/50' : 'bg-gray-100 active:opacity-70'
+                }`}
               >
                 {reportLoading ? (
                   <ActivityIndicator color="#10b981" />
@@ -109,7 +123,7 @@ export default function AdviceScreen() {
                   <>
                     <Ionicons name="refresh" size={15} color="#6b7280" />
                     <Text className="ml-1.5 text-sm font-medium text-gray-600 dark:text-gray-300">
-                      다시 생성
+                      {remaining > 0 ? `다시 생성 (이번 주 ${remaining}회 남음)` : '이번 주 생성 횟수 소진'}
                     </Text>
                   </>
                 )}

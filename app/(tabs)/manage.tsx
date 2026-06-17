@@ -5,6 +5,7 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RoutineFormModal } from '../../src/components/RoutineFormModal';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { SectionLabel } from '../../src/components/SectionLabel';
 import { NewRoutineInput, useApp } from '../../src/store/AppContext';
 import { Routine } from '../../src/types';
 import { activeRoutines } from '../../src/utils/stats';
@@ -39,6 +40,40 @@ export default function ManageScreen() {
     ]);
   };
 
+  const buildList = active.filter((r) => r.kind !== 'avoid');
+  const avoidList = active.filter((r) => r.kind === 'avoid');
+  const showGroups = buildList.length > 0 && avoidList.length > 0;
+
+  const renderRow = (routine: Routine) => (
+    <View
+      key={routine.id}
+      className="mb-3 flex-row items-center rounded-2xl bg-white p-4 dark:bg-gray-800"
+    >
+      <Pressable
+        onPress={() => router.push(`/routine/${routine.id}`)}
+        className="flex-1 flex-row items-center active:opacity-60"
+      >
+        <Text className="text-2xl">{routine.icon}</Text>
+        <View className="ml-3 flex-1">
+          <Text className="text-base font-semibold text-gray-900 dark:text-white">
+            {routine.title}
+          </Text>
+          <Text className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+            {routine.category}
+            {`  ·  ${scheduleLabel(routine)}`}
+            {routine.reminderTime ? `  ·  🔔 ${routine.reminderTime}` : ''}
+          </Text>
+        </View>
+      </Pressable>
+      <Pressable onPress={() => openEdit(routine)} className="mr-1 p-2 active:opacity-60" hitSlop={6}>
+        <Ionicons name="create-outline" size={20} color="#6b7280" />
+      </Pressable>
+      <Pressable onPress={() => confirmDelete(routine)} className="p-2 active:opacity-60" hitSlop={6}>
+        <Ionicons name="trash-outline" size={20} color="#ef4444" />
+      </Pressable>
+    </View>
+  );
+
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-gray-50 dark:bg-gray-950">
       <ScreenHeader title="루틴 관리" />
@@ -48,43 +83,12 @@ export default function ManageScreen() {
             등록된 루틴이 없어요. 아래 버튼으로 추가해 보세요!
           </Text>
         ) : (
-          active.map((routine) => (
-            <View
-              key={routine.id}
-              className="mb-3 flex-row items-center rounded-2xl bg-white p-4 dark:bg-gray-800"
-            >
-              <Pressable
-                onPress={() => router.push(`/routine/${routine.id}`)}
-                className="flex-1 flex-row items-center active:opacity-60"
-              >
-                <Text className="text-2xl">{routine.icon}</Text>
-                <View className="ml-3 flex-1">
-                  <Text className="text-base font-semibold text-gray-900 dark:text-white">
-                    {routine.title}
-                  </Text>
-                  <Text className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    {routine.category}
-                    {`  ·  ${scheduleLabel(routine)}`}
-                    {routine.reminderTime ? `  ·  🔔 ${routine.reminderTime}` : ''}
-                  </Text>
-                </View>
-              </Pressable>
-              <Pressable
-                onPress={() => openEdit(routine)}
-                className="mr-1 p-2 active:opacity-60"
-                hitSlop={6}
-              >
-                <Ionicons name="create-outline" size={20} color="#6b7280" />
-              </Pressable>
-              <Pressable
-                onPress={() => confirmDelete(routine)}
-                className="p-2 active:opacity-60"
-                hitSlop={6}
-              >
-                <Ionicons name="trash-outline" size={20} color="#ef4444" />
-              </Pressable>
-            </View>
-          ))
+          <>
+            {showGroups && <SectionLabel text="✅ 실천형" />}
+            {buildList.map(renderRow)}
+            {showGroups && <SectionLabel text="🛡️ 유지형" />}
+            {avoidList.map(renderRow)}
+          </>
         )}
       </ScrollView>
 

@@ -7,6 +7,7 @@ import { CelebrationOverlay } from '../../src/components/CelebrationOverlay';
 import { useApp } from '../../src/store/AppContext';
 import { addDays, toDateKey, todayKey } from '../../src/utils/date';
 import { monthMatrix, monthTitle } from '../../src/utils/calendar';
+import { isAvoid, streakCardLabel, streakEmoji } from '../../src/utils/kind';
 import { isDueOn, scheduleLabel, WEEKDAY_SHORT } from '../../src/utils/schedule';
 import {
   dueTodayRoutines,
@@ -103,9 +104,17 @@ export default function RoutineDetailScreen() {
 
         {/* 통계 요약 */}
         <View className="mt-4 flex-row gap-3">
-          <StatCard label="현재 스트릭" value={`🔥 ${streak}`} unit="일" />
-          <StatCard label="최장 스트릭" value={`🏆 ${longest}`} unit="일" />
-          <StatCard label="30일 달성률" value={`${Math.round(rate.rate * 100)}`} unit="%" />
+          <StatCard
+            label={streakCardLabel(routine)}
+            value={`${streakEmoji(routine)} ${streak}`}
+            unit="일"
+          />
+          <StatCard label={isAvoid(routine) ? '최장 유지' : '최장 스트릭'} value={`🏆 ${longest}`} unit="일" />
+          <StatCard
+            label={isAvoid(routine) ? '30일 유지율' : '30일 달성률'}
+            value={`${Math.round(rate.rate * 100)}`}
+            unit="%"
+          />
         </View>
 
         {/* 달력 */}
@@ -183,8 +192,8 @@ export default function RoutineDetailScreen() {
 
           {/* 범례 */}
           <View className="mt-4 flex-row flex-wrap gap-x-4 gap-y-1.5">
-            <Legend swatch="bg-emerald-500" label="완료" />
-            <Legend swatch="border-2 border-rose-300" label="놓침" />
+            <Legend swatch="bg-emerald-500" label={isAvoid(routine) ? '지킴' : '완료'} />
+            <Legend swatch="border-2 border-rose-300" label={isAvoid(routine) ? '실패' : '놓침'} />
             <Legend swatch="border border-dashed border-gray-300" label="예정" />
             <Legend swatch="" label="쉬는 날" />
           </View>

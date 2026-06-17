@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import { Routine } from '../types';
+import { streakLabel } from '../utils/kind';
 
 interface Props {
   routine: Routine;
@@ -20,7 +21,7 @@ export function RoutineCheckItem({ routine, completed, streak, onToggle, onOpen 
           </Text>
           <Text className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
             {routine.category}
-            {streak > 0 ? `  ·  🔥 ${streak}일 연속` : ''}
+            {streak > 0 ? `  ·  ${streakLabel(routine, streak)}` : ''}
             {routine.reminderTime ? `  ·  🔔 ${routine.reminderTime}` : ''}
           </Text>
         </View>

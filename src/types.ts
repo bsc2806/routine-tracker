@@ -6,6 +6,7 @@ export const ICON_OPTIONS = [
   '💪', '💧', '📚', '🏃', '🧘', '🥗',
   '😴', '✍️', '🎯', '🌱', '☀️', '🎨',
   '🧹', '💊', '🦷', '🎸', '💰', '🙏',
+  '🚭', '🚫', '🍺', '📵',
 ];
 
 export type ScheduleType = 'daily' | 'weekly';
@@ -16,11 +17,16 @@ export interface Schedule {
   days?: number[];
 }
 
+/** build=실천형(할 일) / avoid=유지형(금주·금연 등 안 하기) */
+export type RoutineKind = 'build' | 'avoid';
+
 export interface Routine {
   id: string;
   title: string;
   category: Category;
   icon: string;
+  /** 루틴 유형. 없으면 실천형(build)으로 간주(v1 호환) */
+  kind?: RoutineKind;
   /** ISO 문자열 (생성 시각) */
   createdAt: string;
   /** 삭제 대신 보관 — 통계 보존용 */
@@ -45,6 +51,8 @@ export interface WeeklyReport {
   weekStart: string;
   text: string;
   generatedAt: string;
+  /** 이번 주 생성 횟수 (비용 통제용, 새 주가 되면 리셋) */
+  generations: number;
 }
 
 export type ThemeMode = 'light' | 'dark' | 'system';
