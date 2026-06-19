@@ -43,9 +43,11 @@ interface Props {
   editing?: Routine | null;
   onClose: () => void;
   onSubmit: (input: NewRoutineInput) => void;
+  /** 이름 검증 — 문제가 있으면 메시지, 없으면 null */
+  validateName?: (name: string, editingId?: string) => string | null;
 }
 
-export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props) {
+export function RoutineFormModal({ visible, editing, onClose, onSubmit, validateName }: Props) {
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState<RoutineKind>('build');
   const [category, setCategory] = useState<Category>('건강');
@@ -55,6 +57,7 @@ export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props)
   const [reminderOn, setReminderOn] = useState(false);
   const [time, setTime] = useState<Date>(toTimeDate());
   const [showPicker, setShowPicker] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -67,6 +70,7 @@ export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props)
       setReminderOn(!!editing?.reminderTime);
       setTime(toTimeDate(editing?.reminderTime));
       setShowPicker(false);
+      setNameError(null);
     }
   }, [visible, editing]);
 
@@ -85,6 +89,11 @@ export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props)
 
   const handleSubmit = () => {
     if (!canSubmit) return;
+    const err = validateName?.(title.trim(), editing?.id) ?? null;
+    if (err) {
+      setNameError(err);
+      return;
+    }
     onSubmit({
       title: title.trim(),
       kind,
@@ -115,11 +124,17 @@ export function RoutineFormModal({ visible, editing, onClose, onSubmit }: Props)
             </Text>
             <TextInput
               value={title}
-              onChangeText={setTitle}
+              onChangeText={(t) => {
+                setTitle(t);
+                if (nameError) setNameError(null);
+              }}
               placeholder="예: 아침 스트레칭"
               placeholderTextColor="#9ca3af"
-              className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              className={`rounded-xl border bg-gray-50 px-4 py-3 text-base text-gray-900 dark:bg-gray-800 dark:text-white ${
+                nameError ? 'border-red-400' : 'border-gray-200 dark:border-gray-700'
+              }`}
             />
+            {nameError && <Text className="mt-1.5 text-xs text-red-500">{nameError}</Text>}
 
             {/* 유형 */}
             <Text className="mb-2 mt-5 text-sm font-medium text-gray-700 dark:text-gray-300">

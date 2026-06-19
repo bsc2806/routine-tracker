@@ -71,7 +71,12 @@ interface AppContextValue {
   settings: Settings;
   addRoutine: (input: NewRoutineInput) => Promise<void>;
   updateRoutine: (id: string, patch: NewRoutineInput) => Promise<void>;
+  /** 보관 — 목록에서 숨기되 기록·통계는 보존 */
   deleteRoutine: (id: string) => Promise<void>;
+  /** 완전 삭제 — 루틴과 모든 기록을 영구 삭제 */
+  purgeRoutine: (id: string) => Promise<void>;
+  /** 보관 해제 — 보관함의 루틴을 되살림 */
+  restoreRoutine: (id: string) => Promise<void>;
   toggleToday: (routineId: string) => void;
   toggleOn: (routineId: string, dateKey: string) => void;
   isDoneToday: (routineId: string) => boolean;
@@ -159,13 +164,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // 삭제는 아카이브(통계 보존) + 예약된 알림 취소
+  // 보관(아카이브) — 통계·기록 보존 + 예약된 알림 취소
   const deleteRoutine = useCallback(async (id: string) => {
     const existing = routinesRef.current.find((r) => r.id === id);
     await cancelReminders(existing?.notificationIds);
     setRoutines((prev) => {
       const next = prev.map((r) =>
         r.id === id ? { ...r, archived: true, notificationIds: undefined } : r,
+      );
+      saveRoutines(next);
+      return next;
+    });
+  }, []);
+
+  // 완전 삭제 — 루틴과 그 기록을 영구 삭제 + 알림 취소
+  const purgeRoutine = useCallback(async (id: string) => {
+    const existing = routinesRef.current.find((r) => r.id === id);
+    await cancelReminders(existing?.notificationIds);
+    setRoutines((prev) => {
+      const next = prev.filter((r) => r.id !== id);
+      saveRoutines(next);
+      return next;
+    });
+    setRecords((prev) => {
+      const next = prev.filter((r) => r.routineId !== id);
+      saveRecords(next);
+      return next;
+    });
+  }, []);
+
+  // 보관 해제 — 되살리면서 알림(있으면) 재예약
+  const restoreRoutine = useCallback(async (id: string) => {
+    const existing = routinesRef.current.find((r) => r.id === id);
+    let notificationIds: string[] | undefined;
+    if (existing?.reminderTime && (await ensurePermission())) {
+      notificationIds = await scheduleRoutineReminder({ ...existing, archived: false });
+    }
+    setRoutines((prev) => {
+      const next = prev.map((r) =>
+        r.id === id ? { ...r, archived: false, notificationIds } : r,
       );
       saveRoutines(next);
       return next;
@@ -255,6 +292,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addRoutine,
       updateRoutine,
       deleteRoutine,
+      purgeRoutine,
+      restoreRoutine,
       toggleToday,
       toggleOn,
       isDoneToday,
@@ -270,6 +309,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addRoutine,
       updateRoutine,
       deleteRoutine,
+      purgeRoutine,
+      restoreRoutine,
       toggleToday,
       toggleOn,
       isDoneToday,

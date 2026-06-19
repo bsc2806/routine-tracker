@@ -294,7 +294,9 @@
 
   function addRoutine(input){ const r = mkRoutine(input.title, input.category, input.icon); r.kind = input.kind; r.schedule = input.schedule; r.reminderTime = input.reminderTime; routines = [...routines, r]; persist(); }
   function updateRoutine(id, patch){ routines = routines.map(r => r.id===id ? {...r, ...patch} : r); persist(); }
-  function deleteRoutine(id){ routines = routines.map(r => r.id===id ? {...r, archived:true} : r); persist(); } // 아카이브
+  function deleteRoutine(id){ routines = routines.map(r => r.id===id ? {...r, archived:true} : r); persist(); } // 보관
+  function purgeRoutine(id){ routines = routines.filter(r => r.id!==id); records = records.filter(r => r.routineId!==id); persist(); } // 완전 삭제
+  function restoreRoutine(id){ routines = routines.map(r => r.id===id ? {...r, archived:false} : r); persist(); } // 보관 해제
   function toggleOn(id, date){
     const i = records.findIndex(r => r.routineId===id && r.date===date);
     if (i >= 0) records[i] = {...records[i], completed: !records[i].completed};
@@ -436,10 +438,10 @@
     setTimeout(()=>{ c.classList.add('hidden'); c.classList.remove('flex'); }, 1800);
   }
 
+  let showArchived = false;
   function renderManage(){
     const list = $('#manageList'); list.innerHTML = '';
     const act = activeRoutines();
-    if (!act.length) { list.innerHTML = `<p class="mt-16 text-center text-gray-400">등록된 루틴이 없어요. + 버튼으로 추가해 보세요!</p>`; return; }
     const manageRow = (r) => {
       const el = document.createElement('div');
       el.className = 'mb-3 flex items-center rounded-2xl bg-white dark:bg-gray-800 p-4';
@@ -455,16 +457,55 @@
         <button data-del="${r.id}" class="p-2 text-lg">🗑️</button>`;
       el.querySelector('.open').onclick = () => openDetail(r.id);
       el.querySelector('[data-edit]').onclick = () => openModal(r);
-      el.querySelector('[data-del]').onclick = () => { if (confirm(`'${r.title}' 루틴을 삭제할까요?`)) { deleteRoutine(r.id); renderAll(); } };
+      el.querySelector('[data-del]').onclick = () => {
+        const n = records.filter(x => x.routineId===r.id && x.completed).length;
+        if (n === 0) { if (confirm(`'${r.title}' 루틴을 삭제할까요?`)) { deleteRoutine(r.id); renderAll(); } return; }
+        // 기록이 있으면: 진행 → 보관/완전삭제 선택 → (완전삭제 시) 2차 확인
+        if (!confirm(`'${r.title}'에 ${n}일의 기록이 있어요.\n계속할까요?`)) return;
+        const purge = confirm(`완전 삭제할까요?\n\n[확인] 완전 삭제 — 루틴과 ${n}일 기록을 영구 삭제 (되돌릴 수 없음)\n[취소] 보관 — 목록에서 숨기고 기록 보존`);
+        if (purge) { if (confirm('정말 영구 삭제할까요? 되돌릴 수 없어요.')) { purgeRoutine(r.id); renderAll(); } }
+        else { deleteRoutine(r.id); renderAll(); }
+      };
       return el;
     };
-    const buildList = act.filter(r => r.kind !== 'avoid');
-    const avoidList = act.filter(r => r.kind === 'avoid');
-    const showGroups = buildList.length > 0 && avoidList.length > 0;
-    if (showGroups) list.appendChild(sectionLabel('✅ 실천형'));
-    buildList.forEach(r => list.appendChild(manageRow(r)));
-    if (showGroups) list.appendChild(sectionLabel('🛡️ 유지형'));
-    avoidList.forEach(r => list.appendChild(manageRow(r)));
+    if (!act.length) {
+      const p = document.createElement('p');
+      p.className = 'mt-16 text-center text-gray-400';
+      p.textContent = '등록된 루틴이 없어요. + 버튼으로 추가해 보세요!';
+      list.appendChild(p);
+    } else {
+      const buildList = act.filter(r => r.kind !== 'avoid');
+      const avoidList = act.filter(r => r.kind === 'avoid');
+      const showGroups = buildList.length > 0 && avoidList.length > 0;
+      if (showGroups) list.appendChild(sectionLabel('✅ 실천형'));
+      buildList.forEach(r => list.appendChild(manageRow(r)));
+      if (showGroups) list.appendChild(sectionLabel('🛡️ 유지형'));
+      avoidList.forEach(r => list.appendChild(manageRow(r)));
+    }
+
+    // 보관함
+    const archived = routines.filter(r => r.archived);
+    if (archived.length) {
+      const head = document.createElement('button');
+      head.className = 'mt-6 mb-1 flex w-full items-center justify-between py-2';
+      head.innerHTML = `<span class="text-sm font-semibold text-gray-500 dark:text-gray-400">🗂️ 보관함 (${archived.length})</span><span class="text-gray-400">${showArchived?'▲':'▼'}</span>`;
+      head.onclick = () => { showArchived = !showArchived; renderManage(); };
+      list.appendChild(head);
+      if (showArchived) {
+        archived.forEach(r => {
+          const el = document.createElement('div');
+          el.className = 'mb-2 flex items-center rounded-2xl bg-gray-100 dark:bg-gray-800/60 p-3';
+          el.innerHTML = `<span class="text-xl opacity-70">${r.icon}</span><span class="ml-3 flex-1 text-sm text-gray-600 dark:text-gray-300">${r.title}</span><button class="rest mr-2 rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white">복원</button><button class="purge p-1.5 text-lg text-red-400">🗑️</button>`;
+          el.querySelector('.rest').onclick = () => {
+            const dup = activeRoutines().find(x => x.title.trim().toLowerCase() === r.title.trim().toLowerCase());
+            if (dup) { alert(`'${r.title}'와(과) 같은 이름의 루틴이 이미 목록에 있어요.\n기존 루틴 이름을 바꾼 뒤 다시 시도해 주세요.`); return; }
+            restoreRoutine(r.id); renderAll();
+          };
+          el.querySelector('.purge').onclick = () => { const n = records.filter(x => x.routineId===r.id && x.completed).length; if (confirm(`'${r.title}'와(과) ${n}일의 기록을 영구 삭제할까요?\n되돌릴 수 없어요.`)) { purgeRoutine(r.id); renderAll(); } };
+          list.appendChild(el);
+        });
+      }
+    }
   }
 
   function renderStats(){
@@ -698,6 +739,8 @@
   $('#fCancel').onclick = closeModal;
   $('#fSave').onclick = () => {
     const title = $('#fTitle').value.trim(); if (!title) return;
+    const dup = routines.find(r => r.id !== editingId && r.title.trim().toLowerCase() === title.toLowerCase());
+    if (dup) { alert(dup.archived ? '보관함에 같은 이름의 루틴이 있어요. 보관함에서 복원해 주세요.' : '이미 같은 이름의 루틴이 있어요.'); return; }
     if (selSchedType === 'weekly' && selDays.length === 0) { alert('특정 요일을 하나 이상 선택해 주세요.'); return; }
     const schedule = selSchedType === 'weekly' ? { type:'weekly', days:[...selDays].sort((a,b)=>a-b) } : { type:'daily' };
     const reminderTime = $('#fReminderOn').checked ? $('#fReminderTime').value : undefined;
