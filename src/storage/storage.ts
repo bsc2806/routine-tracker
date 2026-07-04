@@ -7,6 +7,7 @@ const KEYS = {
   settings: '@settings',
   weeklyReport: '@weeklyReport',
   achievementsCelebrated: '@achievementsCelebrated',
+  earnedBadges: '@earnedBadges',
 } as const;
 
 const DEFAULT_SETTINGS: Settings = { theme: 'system', seeded: false };
@@ -45,3 +46,7 @@ export const loadAchievementsCelebrated = () =>
   readJSON<boolean>(KEYS.achievementsCelebrated, false);
 export const saveAchievementsCelebrated = (v: boolean) =>
   writeJSON(KEYS.achievementsCelebrated, v);
+
+// null = 아직 한 번도 기록 안 됨(최초 실행) → 토스트 없이 기준선만 저장
+export const loadEarnedBadges = () => readJSON<string[] | null>(KEYS.earnedBadges, null);
+export const saveEarnedBadges = (ids: string[]) => writeJSON(KEYS.earnedBadges, ids);
