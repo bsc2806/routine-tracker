@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { RecordEntry, Routine, Settings, WeeklyReport } from '../types';
+import { DiaryEntry, RecordEntry, Routine, Settings, WeeklyReport } from '../types';
 
 const KEYS = {
   routines: '@routines',
@@ -8,6 +8,7 @@ const KEYS = {
   weeklyReport: '@weeklyReport',
   achievementsCelebrated: '@achievementsCelebrated',
   earnedBadges: '@earnedBadges',
+  diary: '@diary',
 } as const;
 
 const DEFAULT_SETTINGS: Settings = { theme: 'system', seeded: false };
@@ -50,3 +51,6 @@ export const saveAchievementsCelebrated = (v: boolean) =>
 // null = 아직 한 번도 기록 안 됨(최초 실행) → 토스트 없이 기준선만 저장
 export const loadEarnedBadges = () => readJSON<string[] | null>(KEYS.earnedBadges, null);
 export const saveEarnedBadges = (ids: string[]) => writeJSON(KEYS.earnedBadges, ids);
+
+export const loadDiary = () => readJSON<DiaryEntry[]>(KEYS.diary, []);
+export const saveDiary = (entries: DiaryEntry[]) => writeJSON(KEYS.diary, entries);

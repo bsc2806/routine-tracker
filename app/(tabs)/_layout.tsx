@@ -42,6 +42,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="diary"
+        options={{
+          title: '일기',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="book" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="advice"
         options={{
           title: 'AI 조언',

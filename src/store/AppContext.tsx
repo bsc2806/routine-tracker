@@ -17,15 +17,19 @@ import {
   scheduleRoutineReminder,
 } from '../lib/notifications';
 import {
+  loadDiary,
   loadRecords,
   loadRoutines,
   loadSettings,
+  saveDiary,
   saveRecords,
   saveRoutines,
   saveSettings,
 } from '../storage/storage';
 import {
   Category,
+  DiaryEntry,
+  Mood,
   RecordEntry,
   Routine,
   RoutineKind,
@@ -81,6 +85,10 @@ interface AppContextValue {
   toggleOn: (routineId: string, dateKey: string) => void;
   isDoneToday: (routineId: string) => boolean;
   getStreak: (routineId: string) => number;
+  diary: DiaryEntry[];
+  getDiary: (date: string) => DiaryEntry | undefined;
+  upsertDiary: (date: string, patch: { mood?: Mood; text: string }) => void;
+  deleteDiary: (date: string) => void;
   setTheme: (theme: ThemeMode) => void;
   /** 백업 복원: 기존 데이터를 덮어쓰고 알림 재예약 */
   importData: (routines: Routine[], records: RecordEntry[]) => Promise<void>;
@@ -95,6 +103,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [records, setRecords] = useState<RecordEntry[]>([]);
   const [settings, setSettings] = useState<Settings>({ theme: 'system', seeded: false });
+  const [diary, setDiary] = useState<DiaryEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   // 비동기 콜백에서 최신 routines 를 읽기 위한 ref
@@ -106,7 +115,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // 최초 로드 + 샘플 시드
   useEffect(() => {
     (async () => {
-      const [r, rec, s] = await Promise.all([loadRoutines(), loadRecords(), loadSettings()]);
+      const [r, rec, s, d] = await Promise.all([
+        loadRoutines(),
+        loadRecords(),
+        loadSettings(),
+        loadDiary(),
+      ]);
       let initialRoutines = r;
       let initialSettings = s;
       if (!s.seeded) {
@@ -118,6 +132,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setRoutines(initialRoutines);
       setRecords(rec);
       setSettings(initialSettings);
+      setDiary(d);
       setLoaded(true);
     })();
   }, []);
@@ -229,6 +244,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [toggleOn],
   );
 
+  const getDiary = useCallback((date: string) => diary.find((e) => e.date === date), [diary]);
+
+  const upsertDiary = useCallback(
+    (date: string, patch: { mood?: Mood; text: string }) => {
+      const isEmpty = patch.mood == null && !patch.text.trim();
+      setDiary((prev) => {
+        let next: DiaryEntry[];
+        if (isEmpty) {
+          next = prev.filter((e) => e.date !== date); // 빈 항목은 저장하지 않음
+        } else {
+          const entry: DiaryEntry = {
+            date,
+            mood: patch.mood,
+            text: patch.text,
+            updatedAt: new Date().toISOString(),
+          };
+          const idx = prev.findIndex((e) => e.date === date);
+          next = idx >= 0 ? prev.map((e, i) => (i === idx ? entry : e)) : [...prev, entry];
+        }
+        saveDiary(next);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const deleteDiary = useCallback((date: string) => {
+    setDiary((prev) => {
+      const next = prev.filter((e) => e.date !== date);
+      saveDiary(next);
+      return next;
+    });
+  }, []);
+
   const setTheme = useCallback((theme: ThemeMode) => {
     setSettings((prev) => {
       const next = { ...prev, theme };
@@ -261,6 +310,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveRoutines(fresh);
     setRecords([]);
     saveRecords([]);
+    setDiary([]);
+    saveDiary([]);
     setSettings((prev) => {
       const next = { ...prev, seeded: true };
       saveSettings(next);
@@ -298,6 +349,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toggleOn,
       isDoneToday,
       getStreak,
+      diary,
+      getDiary,
+      upsertDiary,
+      deleteDiary,
       setTheme,
       importData,
       resetData,
@@ -315,6 +370,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toggleOn,
       isDoneToday,
       getStreak,
+      diary,
+      getDiary,
+      upsertDiary,
+      deleteDiary,
       setTheme,
       importData,
       resetData,

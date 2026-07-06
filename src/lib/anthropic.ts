@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
-import { RecordEntry, Routine } from '../types';
+import { DiaryEntry, Mood, MOODS, RecordEntry, Routine } from '../types';
+import { lastNDateKeys, weekdayLabel } from '../utils/date';
 import { bestWorst, routineRates, todayProgress, weeklyData } from '../utils/stats';
 
 const extra = (Constants.expoConfig?.extra ?? {}) as {
@@ -68,8 +69,33 @@ function buildAdviceSummary(routines: Routine[], records: RecordEntry[]): string
   return [`오늘 진행: ${done}/${total} 완료`, '', '최근 7일 루틴별 달성 현황:', lines].join('\n');
 }
 
+/** 최근 7일 기분 요약 (있을 때만) */
+function buildMoodSummary(diary: DiaryEntry[]): string[] {
+  const keys = lastNDateKeys(7);
+  const moodByDate = new Map(diary.map((d) => [d.date, d.mood]));
+  const days = keys.filter((k) => moodByDate.get(k) != null);
+  if (days.length === 0) return [];
+
+  const moodLine = days
+    .map((k) => `${weekdayLabel(k)}(${MOODS.find((m) => m.value === moodByDate.get(k))?.emoji})`)
+    .join(' ');
+  const vals = days.map((k) => moodByDate.get(k)) as Mood[];
+  const avg = (vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1);
+
+  return [
+    '',
+    `최근 7일 기분: ${moodLine}`,
+    `평균 기분: ${avg}/5`,
+    '기분과 루틴 달성률의 관계도 자연스럽게 짚어 줘.',
+  ];
+}
+
 /** 주간 리포트용 데이터 요약 */
-function buildWeeklySummary(routines: Routine[], records: RecordEntry[]): string {
+function buildWeeklySummary(
+  routines: Routine[],
+  records: RecordEntry[],
+  diary: DiaryEntry[],
+): string {
   const rates = routineRates(routines, records, 7);
   const week = weeklyData(routines, records);
   const { best, worst } = bestWorst(rates);
@@ -97,6 +123,7 @@ function buildWeeklySummary(routines: Routine[], records: RecordEntry[]): string
     '',
     '루틴별 최근 7일 달성:',
     perRoutine,
+    ...buildMoodSummary(diary),
   ]
     .filter(Boolean)
     .join('\n');
@@ -108,11 +135,12 @@ export async function getAdvice(routines: Routine[], records: RecordEntry[]): Pr
   return text || '조언을 생성하지 못했어요. 다시 시도해 주세요.';
 }
 
-/** 이번 주 요약 + 다음 주 목표 제안 리포트 */
+/** 이번 주 요약 + 다음 주 목표 제안 리포트 (기분 데이터 있으면 함께 분석) */
 export async function getWeeklyReport(
   routines: Routine[],
   records: RecordEntry[],
+  diary: DiaryEntry[] = [],
 ): Promise<string> {
-  const text = await callProxy('weekly', buildWeeklySummary(routines, records));
+  const text = await callProxy('weekly', buildWeeklySummary(routines, records, diary));
   return text || '리포트를 생성하지 못했어요. 다시 시도해 주세요.';
 }

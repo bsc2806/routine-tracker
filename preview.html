@@ -93,6 +93,24 @@
       <p class="mt-2 px-1 text-xs text-gray-400">내 최고 기록에 도전해 보세요. 천장 없이 계속 갱신돼요.</p>
     </section>
 
+    <!-- DIARY -->
+    <section data-screen="diary" class="screen flex-1 flex-col overflow-y-auto px-5 pt-12 pb-24">
+      <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">일기</h2>
+        <button class="goSettings h-10 w-10 flex items-center justify-center rounded-full bg-white dark:bg-gray-800 text-lg">⚙️</button>
+      </div>
+      <div id="diaryDate" class="mt-3 mb-5 flex items-center justify-between"></div>
+      <div class="rounded-2xl bg-white dark:bg-gray-800 p-5">
+        <p class="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">오늘 기분은 어때요?</p>
+        <div id="moodRow" class="flex justify-between"></div>
+        <textarea id="diaryText" placeholder="오늘 하루를 기록해 보세요." class="mt-5 w-full min-h-[120px] rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-base leading-6 text-gray-900 dark:text-white outline-none resize-none"></textarea>
+        <button id="diarySave" class="mt-4 w-full rounded-xl bg-emerald-500 py-3 text-base font-semibold text-white">저장</button>
+        <button id="diaryDelete" class="mt-2 hidden w-full py-2 text-sm font-medium text-red-500">이 날 일기 삭제</button>
+      </div>
+      <h3 class="mb-3 mt-7 text-base font-semibold text-gray-900 dark:text-white">지난 기록</h3>
+      <div id="diaryPast"></div>
+    </section>
+
     <!-- ADVICE -->
     <section data-screen="advice" class="screen flex-1 flex-col overflow-y-auto px-5 pt-12 pb-24">
       <div class="flex items-center justify-between">
@@ -235,10 +253,11 @@
 
     <!-- TAB BAR -->
     <nav class="absolute bottom-0 left-0 right-0 h-20 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex justify-around items-start pt-2.5 z-10">
-      <button class="tabbtn active flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400 w-16" data-tab="home"><span class="text-xl">🏠</span><span class="text-[11px] font-medium">홈</span></button>
-      <button class="tabbtn flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400 w-16" data-tab="manage"><span class="text-xl">📋</span><span class="text-[11px] font-medium">루틴</span></button>
-      <button class="tabbtn flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400 w-16" data-tab="stats"><span class="text-xl">📊</span><span class="text-[11px] font-medium">통계</span></button>
-      <button class="tabbtn flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400 w-16" data-tab="advice"><span class="text-xl">✨</span><span class="text-[11px] font-medium">AI 조언</span></button>
+      <button class="tabbtn active flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400 w-14" data-tab="home"><span class="text-xl">🏠</span><span class="text-[11px] font-medium">홈</span></button>
+      <button class="tabbtn flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400 w-14" data-tab="manage"><span class="text-xl">📋</span><span class="text-[11px] font-medium">루틴</span></button>
+      <button class="tabbtn flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400 w-14" data-tab="stats"><span class="text-xl">📊</span><span class="text-[11px] font-medium">통계</span></button>
+      <button class="tabbtn flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400 w-14" data-tab="diary"><span class="text-xl">📔</span><span class="text-[11px] font-medium">일기</span></button>
+      <button class="tabbtn flex flex-col items-center gap-1 text-gray-500 dark:text-gray-400 w-14" data-tab="advice"><span class="text-xl">✨</span><span class="text-[11px] font-medium">AI 조언</span></button>
     </nav>
   </div>
 
@@ -256,6 +275,14 @@
   const ICON_OPTIONS = ['💪','💧','📚','🏃','🧘','🥗','😴','✍️','🎯','🌱','☀️','🎨','🧹','💊','🦷','🎸','💰','🙏','🚭','🚫','🍺','📵'];
   const isAvoid = r => r.kind === 'avoid';
   const streakLabel = (r, s) => s <= 0 ? '' : (isAvoid(r) ? `🛡️ ${s}일째 유지` : `🔥 ${s}일 연속`);
+  const MOODS = [
+    { value:5, emoji:'😀', label:'아주 좋음' },
+    { value:4, emoji:'🙂', label:'좋음' },
+    { value:3, emoji:'😐', label:'보통' },
+    { value:2, emoji:'😔', label:'별로' },
+    { value:1, emoji:'😣', label:'힘듦' },
+  ];
+  const escapeHtml = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
   // ---- storage.ts (localStorage 래퍼) ----
   const K = { routines: '@routines', records: '@records', settings: '@settings' };
@@ -292,6 +319,9 @@
   let routines = read(K.routines, null);
   let records  = read(K.records, []);
   let settings = read(K.settings, { theme: 'system', seeded: false });
+  let diary = read('@diary', []);
+  const saveDiary = () => write('@diary', diary);
+  const getDiary = date => diary.find(e => e.date === date);
 
   // 첫 실행 시 샘플 루틴 3개 시드
   if (!settings || !settings.seeded) {
@@ -654,6 +684,64 @@
     localStorage.setItem(BKEY, JSON.stringify(earnedIds));
   }
 
+  // ----- 일기 -----
+  let selDiaryDate = todayKey(), selMood;
+  function renderMoodRow(){
+    $('#moodRow').innerHTML = MOODS.map(m => {
+      const sel = selMood === m.value;
+      return `<button data-mood="${m.value}" class="flex flex-col items-center"><span class="h-12 w-12 flex items-center justify-center rounded-full border-2 ${sel?'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10':'border-transparent bg-gray-100 dark:bg-gray-700'}"><span class="text-2xl">${m.emoji}</span></span><span class="mt-1 text-[10px] ${sel?'text-emerald-600 dark:text-emerald-400':'text-gray-400'}">${m.label}</span></button>`;
+    }).join('');
+    $('#moodRow').querySelectorAll('[data-mood]').forEach(b => b.onclick = () => { const v = +b.dataset.mood; selMood = selMood === v ? undefined : v; renderMoodRow(); });
+    updateDiarySave();
+  }
+  function updateDiarySave(){
+    const canSave = selMood != null || $('#diaryText').value.trim().length > 0;
+    const btn = $('#diarySave'); btn.disabled = !canSave; btn.classList.toggle('opacity-40', !canSave);
+  }
+  function renderDiaryDate(){
+    const isToday = selDiaryDate === todayKey();
+    const exists = !!getDiary(selDiaryDate);
+    const chip = exists ? `<span class="ml-2 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">작성됨</span>` : '';
+    $('#diaryDate').innerHTML = `<div class="flex items-center"><button id="diaryDateBtn" class="flex items-center gap-1.5 active:opacity-60"><span>📅</span><span class="text-sm font-medium text-gray-700 dark:text-gray-300">${formatKorean(fromKey(selDiaryDate))}${isToday?' · 오늘':''}</span><span class="text-gray-400 text-xs">▾</span></button>${chip}</div><input id="diaryPicker" type="date" required value="${selDiaryDate}" max="${todayKey()}" class="sr-only absolute h-0 w-0 opacity-0">${isToday?'':`<button id="diaryToday" class="rounded-full bg-white dark:bg-gray-800 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">오늘로</button>`}`;
+    const picker = $('#diaryPicker');
+    $('#diaryDateBtn').onclick = () => { if (picker.showPicker) picker.showPicker(); else picker.focus(); };
+    picker.onchange = (e) => { if (e.target.value){ selDiaryDate = e.target.value; renderDiary(); } };
+    const t = $('#diaryToday'); if (t) t.onclick = () => { selDiaryDate = todayKey(); renderDiary(); };
+  }
+  function renderDiaryPast(){
+    const past = [...diary].sort((a,b) => a.date < b.date ? 1 : -1);
+    $('#diaryPast').innerHTML = past.length ? past.map(e => {
+      const emoji = (MOODS.find(m => m.value === e.mood) || {}).emoji || '📝';
+      return `<button data-d="${e.date}" class="mb-2 flex w-full items-center rounded-2xl bg-white dark:bg-gray-800 p-4 text-left ${e.date===selDiaryDate?'border border-emerald-500':''}"><span class="text-2xl">${emoji}</span><span class="ml-3 flex-1 overflow-hidden"><span class="block text-xs text-gray-400 dark:text-gray-500">${formatKorean(fromKey(e.date))}</span>${e.text?`<span class="block mt-0.5 text-sm text-gray-700 dark:text-gray-200 truncate">${escapeHtml(e.text)}</span>`:''}</span></button>`;
+    }).join('') : `<p class="mt-2 text-center text-gray-400">아직 작성한 일기가 없어요.</p>`;
+    $('#diaryPast').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { selDiaryDate = b.dataset.d; renderDiary(); document.querySelector('[data-screen="diary"]').scrollTop = 0; });
+  }
+  function renderDiary(){
+    const e = getDiary(selDiaryDate);
+    selMood = e ? e.mood : undefined;
+    $('#diaryText').value = e ? e.text : '';
+    renderDiaryDate(); renderMoodRow(); renderDiaryPast();
+    const del = $('#diaryDelete');
+    del.classList.toggle('hidden', !e);
+    del.onclick = () => {
+      if (!confirm(`${formatKorean(fromKey(selDiaryDate))} 일기를 삭제할까요?`)) return;
+      const i = diary.findIndex(x => x.date === selDiaryDate);
+      if (i >= 0) diary.splice(i, 1);
+      saveDiary(); selMood = undefined; $('#diaryText').value = ''; renderDiary();
+    };
+  }
+  $('#diaryText').oninput = updateDiarySave;
+  $('#diarySave').onclick = () => {
+    const text = $('#diaryText').value;
+    if (selMood == null && !text.trim()) return; // 빈 상태는 저장하지 않음
+    const i = diary.findIndex(x => x.date === selDiaryDate);
+    const entry = { date: selDiaryDate, mood: selMood, text, updatedAt: new Date().toISOString() };
+    if (i >= 0) diary[i] = entry; else diary.push(entry);
+    saveDiary();
+    const btn = $('#diarySave'); btn.textContent = '저장됨 ✓'; setTimeout(() => btn.textContent = '저장', 1500);
+    renderDiary();
+  };
+
   function renderAll(){ renderHome(); renderManage(); renderStats(); checkNewBadges(); }
 
   /* ============================ AI 조언 (목) ============================ */
@@ -695,7 +783,10 @@
     if (!rates.length) return '📊 이번 주 요약\n아직 등록된 루틴이 없어요. 이번 주는 작은 습관 하나를 정하는 것부터 시작해요!\n\n🎯 다음 주 목표\n- 가장 쉬운 루틴 1개 정하기\n- 매일 같은 시간에 시도하기\n- 3일 연속 체크 도전하기';
     const sorted = [...rates].sort((a,b)=>a.rate-b.rate);
     const worst = sorted[0], best = sorted[sorted.length-1];
-    return `📊 이번 주 요약\n이번 주 평균 달성률은 ${avg}%였어요. ${best.routine.title}은(는) 꾸준히 잘 지켰지만 ${worst.routine.title}은(는) 조금 아쉬웠어요.\n\n👍 잘한 점\n- ${best.routine.icon} ${best.routine.title} ${Math.round(best.rate*100)}% 달성\n\n🎯 다음 주 목표\n- ${worst.routine.icon} ${worst.routine.title} 시간대를 아침으로 옮기기\n- 빠진 날 없이 3일 연속 체크하기\n- 전체 평균 ${Math.min(100, avg+15)}% 도전하기`;
+    const moods = lastNDateKeys(7).map(k => (getDiary(k)||{}).mood).filter(v => v != null);
+    let moodPart = '';
+    if (moods.length){ const mAvg = (moods.reduce((s,v)=>s+v,0)/moods.length).toFixed(1); moodPart = `\n\n😊 기분과의 관계\n최근 ${moods.length}일 평균 기분은 ${mAvg}/5였어요. 기분이 좋은 날에 달성률도 함께 올라가는 경향이 보여요.`; }
+    return `📊 이번 주 요약\n이번 주 평균 달성률은 ${avg}%였어요. ${best.routine.title}은(는) 꾸준히 잘 지켰지만 ${worst.routine.title}은(는) 조금 아쉬웠어요.${moodPart}\n\n👍 잘한 점\n- ${best.routine.icon} ${best.routine.title} ${Math.round(best.rate*100)}% 달성\n\n🎯 다음 주 목표\n- ${worst.routine.icon} ${worst.routine.title} 시간대를 아침으로 옮기기\n- 빠진 날 없이 3일 연속 체크하기\n- 전체 평균 ${Math.min(100, avg+15)}% 도전하기`;
   }
   function renderReport(){
     const rep = loadReport(), area = $('#reportArea');
@@ -916,6 +1007,7 @@
     $(`[data-screen="${tab}"]`).classList.add('active');
     $('#fab').classList.toggle('hidden', tab !== 'manage');
     $('#fab').classList.toggle('flex', tab === 'manage');
+    if (tab === 'diary') renderDiary();
   });
 
   /* ============================ 데모/초기화 ============================ */
@@ -940,13 +1032,14 @@
   };
   $('#resetData').onclick = () => {
     if (!confirm('모든 데이터를 지우고 첫 실행 상태(샘플 3개)로 되돌릴까요?')) return;
-    localStorage.removeItem(K.routines); localStorage.removeItem(K.records); localStorage.removeItem(K.settings); localStorage.removeItem('@weeklyReport'); localStorage.removeItem('@achievementsCelebrated'); localStorage.removeItem('@earnedBadges');
+    localStorage.removeItem(K.routines); localStorage.removeItem(K.records); localStorage.removeItem(K.settings); localStorage.removeItem('@weeklyReport'); localStorage.removeItem('@achievementsCelebrated'); localStorage.removeItem('@earnedBadges'); localStorage.removeItem('@diary');
     location.reload();
   };
 
   applyTheme();
   renderAll();
   renderReport();
+  renderDiary();
   </script>
 </body>
 </html>

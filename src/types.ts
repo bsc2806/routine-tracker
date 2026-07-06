@@ -46,6 +46,30 @@ export interface RecordEntry {
   completed: boolean;
 }
 
+export type Mood = 1 | 2 | 3 | 4 | 5;
+
+export interface MoodOption {
+  value: Mood;
+  emoji: string;
+  label: string;
+}
+
+export const MOODS: MoodOption[] = [
+  { value: 5, emoji: '😀', label: '아주 좋음' },
+  { value: 4, emoji: '🙂', label: '좋음' },
+  { value: 3, emoji: '😐', label: '보통' },
+  { value: 2, emoji: '😔', label: '별로' },
+  { value: 1, emoji: '😣', label: '힘듦' },
+];
+
+export interface DiaryEntry {
+  /** "YYYY-MM-DD" (하루 1개) */
+  date: string;
+  mood?: Mood;
+  text: string;
+  updatedAt: string;
+}
+
 export interface WeeklyReport {
   /** 해당 주 월요일 키 — 새 주가 되면 재생성 */
   weekStart: string;

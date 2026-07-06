@@ -13,7 +13,7 @@ import { weekStartKey } from '../../src/utils/date';
 const MAX_WEEKLY_GENERATIONS = 3;
 
 export default function AdviceScreen() {
-  const { routines, records } = useApp();
+  const { routines, records, diary } = useApp();
   const configured = isConfigured();
 
   // 주간 리포트
@@ -44,7 +44,7 @@ export default function AdviceScreen() {
     setReportLoading(true);
     setReportError(null);
     try {
-      const text = await getWeeklyReport(routines, records);
+      const text = await getWeeklyReport(routines, records, diary);
       const next: WeeklyReport = {
         weekStart: weekStartKey(),
         text,
