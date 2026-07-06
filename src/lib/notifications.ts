@@ -7,6 +7,7 @@ const ANDROID_CHANNEL_ID = 'routine-reminders';
 // 앱이 포그라운드일 때도 알림 배너를 표시
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
+    shouldShowAlert: true,
     shouldShowBanner: true,
     shouldShowList: true,
     shouldPlaySound: true,
