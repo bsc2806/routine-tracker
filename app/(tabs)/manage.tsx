@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RoutineFormModal } from '../../src/components/RoutineFormModal';
+import { RoutineIcon } from '../../src/components/RoutineIcon';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { SectionLabel } from '../../src/components/SectionLabel';
 import { NewRoutineInput, useApp } from '../../src/store/AppContext';
@@ -108,7 +109,7 @@ export default function ManageScreen() {
         onPress={() => router.push(`/routine/${routine.id}`)}
         className="flex-1 flex-row items-center active:opacity-60"
       >
-        <Text className="text-2xl">{routine.icon}</Text>
+        <RoutineIcon routine={routine} />
         <View className="ml-3 flex-1">
           <Text className="text-base font-semibold text-gray-900 dark:text-white">
             {routine.title}

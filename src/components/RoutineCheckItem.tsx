@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { Routine } from '../types';
 import { streakLabel } from '../utils/kind';
+import { RoutineIcon } from './RoutineIcon';
 
 interface Props {
   routine: Routine;
@@ -14,7 +15,7 @@ export function RoutineCheckItem({ routine, completed, streak, onToggle, onOpen 
   return (
     <View className="mb-3 flex-row items-center rounded-2xl bg-white p-4 dark:bg-gray-800">
       <Pressable onPress={onOpen} className="flex-1 flex-row items-center active:opacity-60">
-        <Text className="text-2xl">{routine.icon}</Text>
+        <RoutineIcon routine={routine} />
         <View className="ml-3 flex-1">
           <Text className="text-base font-semibold text-gray-900 dark:text-white">
             {routine.title}

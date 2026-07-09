@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CelebrationOverlay } from '../../src/components/CelebrationOverlay';
+import { RoutineIcon } from '../../src/components/RoutineIcon';
 import { useApp } from '../../src/store/AppContext';
 import { addDays, toDateKey, todayKey } from '../../src/utils/date';
 import { monthMatrix, monthTitle } from '../../src/utils/calendar';
@@ -92,7 +93,7 @@ export default function RoutineDetailScreen() {
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 4, paddingBottom: 40 }}>
         {/* 루틴 정보 */}
         <View className="flex-row items-center rounded-2xl bg-white p-5 dark:bg-gray-800">
-          <Text className="text-4xl">{routine.icon}</Text>
+          <RoutineIcon routine={routine} size={56} />
           <View className="ml-4 flex-1">
             <Text className="text-xl font-bold text-gray-900 dark:text-white">{routine.title}</Text>
             <Text className="mt-1 text-xs text-gray-500 dark:text-gray-400">
