@@ -121,11 +121,19 @@ export default function ManageScreen() {
           </Text>
         </View>
       </Pressable>
-      <Pressable onPress={() => openEdit(routine)} className="mr-1 p-2 active:opacity-60" hitSlop={6}>
-        <Ionicons name="create-outline" size={20} color="#6b7280" />
+      <Pressable
+        onPress={() => openEdit(routine)}
+        hitSlop={6}
+        className="mr-1.5 h-9 w-9 items-center justify-center rounded-full bg-gray-100 active:opacity-60 dark:bg-gray-700"
+      >
+        <Ionicons name="pencil" size={15} color="#6b7280" />
       </Pressable>
-      <Pressable onPress={() => confirmDelete(routine)} className="p-2 active:opacity-60" hitSlop={6}>
-        <Ionicons name="trash-outline" size={20} color="#ef4444" />
+      <Pressable
+        onPress={() => confirmDelete(routine)}
+        hitSlop={6}
+        className="h-9 w-9 items-center justify-center rounded-full bg-red-50 active:opacity-60 dark:bg-red-500/10"
+      >
+        <Ionicons name="trash" size={15} color="#ef4444" />
       </Pressable>
     </View>
   );
@@ -190,9 +198,9 @@ export default function ManageScreen() {
                       )
                     }
                     hitSlop={6}
-                    className="p-1.5 active:opacity-60"
+                    className="h-8 w-8 items-center justify-center rounded-full bg-red-50 active:opacity-60 dark:bg-red-500/10"
                   >
-                    <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                    <Ionicons name="trash" size={14} color="#ef4444" />
                   </Pressable>
                 </View>
               ))}
