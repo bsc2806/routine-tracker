@@ -90,6 +90,7 @@ interface AppContextValue {
   upsertDiary: (date: string, patch: { mood?: Mood; text: string }) => void;
   deleteDiary: (date: string) => void;
   setTheme: (theme: ThemeMode) => void;
+  setAiConsent: (v: boolean) => void;
   /** 백업 복원: 기존 데이터를 덮어쓰고 알림 재예약 */
   importData: (routines: Routine[], records: RecordEntry[]) => Promise<void>;
   /** 전체 초기화: 샘플 3개로 되돌리고 기록 삭제 */
@@ -286,6 +287,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setAiConsent = useCallback((v: boolean) => {
+    setSettings((prev) => {
+      const next = { ...prev, aiConsent: v };
+      saveSettings(next);
+      return next;
+    });
+  }, []);
+
   const importData = useCallback(async (newRoutines: Routine[], newRecords: RecordEntry[]) => {
     // 기존 예약 알림 전부 취소 후, 가져온 루틴에 맞춰 재예약
     await cancelAllReminders();
@@ -354,6 +363,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       upsertDiary,
       deleteDiary,
       setTheme,
+      setAiConsent,
       importData,
       resetData,
     }),
@@ -375,6 +385,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       upsertDiary,
       deleteDiary,
       setTheme,
+      setAiConsent,
       importData,
       resetData,
     ],

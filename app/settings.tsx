@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { exportBackup, pickBackup } from '../src/lib/backup';
 import { useApp } from '../src/store/AppContext';
@@ -14,7 +14,7 @@ const THEME_OPTIONS: { key: ThemeMode; label: string; icon: keyof typeof Ionicon
 ];
 
 export default function SettingsScreen() {
-  const { routines, records, settings, setTheme, importData, resetData } = useApp();
+  const { routines, records, settings, setTheme, setAiConsent, importData, resetData } = useApp();
   const [busy, setBusy] = useState<null | 'export' | 'import'>(null);
 
   const handleExport = async () => {
@@ -136,6 +136,23 @@ export default function SettingsScreen() {
           이 앱은 데이터를 기기에만 저장해요(서버 없음). 기기를 바꾸거나 앱을 지우면 데이터가
           사라지니, 가끔 내보내기로 백업해 두는 걸 권장해요.
         </Text>
+
+        {/* AI */}
+        <Text className="mb-2 mt-6 text-sm font-medium text-gray-500 dark:text-gray-400">AI</Text>
+        <View className="flex-row items-center justify-between rounded-2xl bg-white p-4 dark:bg-gray-800">
+          <View className="flex-1 pr-3">
+            <Text className="text-base text-gray-900 dark:text-white">AI 데이터 전송 동의</Text>
+            <Text className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+              조언·리포트를 위해 루틴·기분 요약을 AI로 전송 (일기 본문 제외)
+            </Text>
+          </View>
+          <Switch
+            value={!!settings.aiConsent}
+            onValueChange={setAiConsent}
+            trackColor={{ false: '#d1d5db', true: '#10b981' }}
+            thumbColor="#ffffff"
+          />
+        </View>
 
         {/* 앱 정보 */}
         <Text className="mb-2 mt-6 text-sm font-medium text-gray-500 dark:text-gray-400">정보</Text>

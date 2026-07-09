@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { getAdvice, getWeeklyReport, isConfigured } from '../../src/lib/anthropic';
@@ -13,8 +13,30 @@ import { weekStartKey } from '../../src/utils/date';
 const MAX_WEEKLY_GENERATIONS = 3;
 
 export default function AdviceScreen() {
-  const { routines, records, diary } = useApp();
+  const { routines, records, diary, settings, setAiConsent } = useApp();
   const configured = isConfigured();
+
+  // AI 데이터 전송 최초 1회 동의 (PIPA: 민감정보 별도 동의)
+  const ensureConsent = (onOk: () => void) => {
+    if (settings.aiConsent) {
+      onOk();
+      return;
+    }
+    Alert.alert(
+      'AI 기능 이용 동의',
+      '맞춤 조언·주간 리포트를 위해 최근 7일의 루틴 제목·카테고리·달성률·기분(mood) 데이터가 AI(Anthropic Claude)로 전송됩니다.\n\n· 일기 본문은 전송되지 않아요.\n· 전송 데이터는 모델 학습에 사용되지 않습니다.\n· 동의는 설정에서 언제든 철회할 수 있어요.',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '동의하고 계속',
+          onPress: () => {
+            setAiConsent(true);
+            onOk();
+          },
+        },
+      ],
+    );
+  };
 
   // 주간 리포트
   const [report, setReport] = useState<WeeklyReport | null>(null);
@@ -34,7 +56,7 @@ export default function AdviceScreen() {
   const usedThisWeek = isThisWeek ? (report?.generations ?? 0) : 0;
   const remaining = MAX_WEEKLY_GENERATIONS - usedThisWeek;
 
-  const generateReport = async () => {
+  const runGenerateReport = async () => {
     if (remaining <= 0) {
       setReportError(
         `이번 주 생성 횟수(${MAX_WEEKLY_GENERATIONS}회)를 모두 사용했어요. 다음 주에 다시 받을 수 있어요.`,
@@ -60,7 +82,7 @@ export default function AdviceScreen() {
     }
   };
 
-  const requestAdvice = async () => {
+  const runRequestAdvice = async () => {
     setAdviceLoading(true);
     setAdviceError(null);
     try {
@@ -71,6 +93,10 @@ export default function AdviceScreen() {
       setAdviceLoading(false);
     }
   };
+
+  // 동의 게이트를 거친 뒤 실행
+  const generateReport = () => ensureConsent(runGenerateReport);
+  const requestAdvice = () => ensureConsent(runRequestAdvice);
 
   const reportDate = report ? new Date(report.generatedAt) : null;
 

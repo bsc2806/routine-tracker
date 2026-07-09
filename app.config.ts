@@ -12,6 +12,8 @@ const config: ExpoConfig = {
   android: {
     package: 'com.routinetracker.app',
     versionCode: 1,
+    // 민감한 일기 데이터가 ADB/클라우드 자동백업으로 평문 추출되는 것 방지
+    allowBackup: false,
     adaptiveIcon: {
       backgroundColor: '#10b981',
     },

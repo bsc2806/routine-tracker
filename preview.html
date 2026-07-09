@@ -241,6 +241,12 @@
           </button>
         </div>
         <p class="mt-4 px-1 text-xs leading-5 text-gray-400">이 앱은 데이터를 기기에만 저장해요(서버 없음). 가끔 내보내기로 백업해 두는 걸 권장해요.</p>
+
+        <p class="mb-2 mt-6 text-sm font-semibold text-gray-500 dark:text-gray-400">AI</p>
+        <div class="flex items-center justify-between rounded-2xl bg-white dark:bg-gray-800 p-4">
+          <div class="flex-1 pr-3"><p class="text-base text-gray-900 dark:text-white">AI 데이터 전송 동의</p><p class="mt-0.5 text-xs text-gray-400">조언·리포트를 위해 루틴·기분 요약을 AI로 전송 (일기 본문 제외)</p></div>
+          <input id="aiConsentToggle" type="checkbox" class="h-5 w-5 accent-emerald-500">
+        </div>
         <input id="importFile" type="file" accept="application/json,.json" class="hidden" />
       </div>
     </div>
@@ -765,7 +771,17 @@
     return `${best.routine.icon} ${best.routine.title}은(는) ${bp}%로 정말 잘 지키고 계세요! 👏 반면 ${worst.routine.icon} ${worst.routine.title}은(는) ${wp}%로 조금 아쉬워요. ${tip} 어떨까요? 🎯 작은 성공이 쌓이면 스트릭도 금방 따라올 거예요!`;
   }
 
+  function aiConsentOk(){
+    if (settings.aiConsent) return true;
+    if (confirm('AI 기능 이용 동의\n\n맞춤 조언·주간 리포트를 위해 최근 7일 루틴 제목·달성률·기분 요약이 AI(Anthropic)로 전송됩니다.\n· 일기 본문은 전송되지 않아요.\n· 모델 학습에 사용되지 않습니다.\n\n동의하고 계속할까요?')) {
+      settings = { ...settings, aiConsent: true }; persist();
+      const t = $('#aiConsentToggle'); if (t) t.checked = true;
+      return true;
+    }
+    return false;
+  }
   $('#adviceBtn').onclick = function(){
+    if (!aiConsentOk()) return;
     const loading = $('#adviceLoading'), result = $('#adviceResult');
     result.classList.add('hidden'); loading.classList.remove('hidden');
     this.disabled = true; this.style.opacity = '0.5';
@@ -808,6 +824,7 @@
     const g = $('#genReport'); if (g && !g.disabled) g.onclick = generateReport;
   }
   function generateReport(){
+    if (!aiConsentOk()) return;
     const rep = loadReport();
     const sameWeek = rep && rep.weekStart === weekStartKey();
     const used = sameWeek ? (rep.generations || 0) : 0;
@@ -962,7 +979,13 @@
     document.documentElement.classList.toggle('dark', dark);
   }
   /* ============================ 설정 + 백업/복원 ============================ */
-  function openSettings(){ renderThemeSeg(); $('#settings').classList.remove('hidden'); $('#settings').classList.add('flex'); }
+  function openSettings(){
+    renderThemeSeg();
+    const t = $('#aiConsentToggle');
+    t.checked = !!settings.aiConsent;
+    t.onchange = (e) => { settings = { ...settings, aiConsent: e.target.checked }; persist(); };
+    $('#settings').classList.remove('hidden'); $('#settings').classList.add('flex');
+  }
   function closeSettings(){ $('#settings').classList.add('hidden'); $('#settings').classList.remove('flex'); }
   document.querySelectorAll('.goSettings').forEach(b => b.onclick = openSettings);
   $('#settingsBack').onclick = closeSettings;

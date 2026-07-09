@@ -85,4 +85,6 @@ export interface Settings {
   theme: ThemeMode;
   /** 샘플 루틴 1회 생성 여부 */
   seeded: boolean;
+  /** AI 기능(데이터 전송) 동의 여부 */
+  aiConsent?: boolean;
 }
