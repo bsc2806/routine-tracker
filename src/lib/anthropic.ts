@@ -24,7 +24,7 @@ type Mode = 'advice' | 'weekly';
  */
 async function callProxy(mode: Mode, summary: string): Promise<string> {
   if (!isConfigured()) {
-    throw new Error('AI 서버가 설정되지 않았어요. .env 의 EXPO_PUBLIC_PROXY_URL 을 확인해 주세요.');
+    throw new Error('AI 기능을 아직 사용할 수 없어요. 잠시 후 다시 시도해 주세요.');
   }
 
   let res: Response;
@@ -35,13 +35,15 @@ async function callProxy(mode: Mode, summary: string): Promise<string> {
       body: JSON.stringify({ mode, summary, token: PROXY_TOKEN }),
     });
   } catch {
-    throw new Error('네트워크 오류로 AI 응답을 가져오지 못했어요. 연결을 확인해 주세요.');
+    throw new Error('네트워크가 불안정한 것 같아요. 연결을 확인한 뒤 다시 시도해 주세요.');
   }
 
   if (!res.ok) {
-    if (res.status === 401) throw new Error('AI 서버 인증에 실패했어요. 토큰을 확인해 주세요.');
-    if (res.status === 429) throw new Error('요청이 많아요. 잠시 후 다시 시도해 주세요.');
-    throw new Error(`AI 호출 실패 (${res.status})`);
+    // 요청 과다만 별도 안내, 그 외(인증·결제·서버 오류 등 내부 사유)는 일반 문구로
+    if (res.status === 429) {
+      throw new Error('지금은 요청이 많아요. 잠시 후 다시 시도해 주세요.');
+    }
+    throw new Error('AI 기능을 잠시 사용할 수 없어요. 잠시 후 다시 시도해 주세요.');
   }
 
   const data = (await res.json()) as { text?: string };

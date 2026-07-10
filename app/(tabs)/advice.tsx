@@ -108,10 +108,10 @@ export default function AdviceScreen() {
         {!configured && (
           <View className="mb-2 rounded-2xl bg-orange-50 p-4 dark:bg-orange-500/10">
             <Text className="text-sm font-medium text-orange-700 dark:text-orange-300">
-              ⚠️ API 키가 설정되지 않았어요
+              ⚠️ AI 기능을 아직 사용할 수 없어요
             </Text>
             <Text className="mt-1 text-xs text-orange-600 dark:text-orange-400">
-              .env 파일에 ANTHROPIC_API_KEY 를 추가한 뒤 앱을 다시 시작해 주세요.
+              잠시 후 다시 시도하거나, 문제가 계속되면 앱 업데이트를 확인해 주세요.
             </Text>
           </View>
         )}
