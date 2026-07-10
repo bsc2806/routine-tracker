@@ -24,7 +24,7 @@ npx expo install --fix
 
 # 3) 환경변수 설정
 cp .env.example .env
-#   .env 의 ANTHROPIC_API_KEY 를 실제 키로 교체
+#   AI 프록시(Cloudflare Worker) 배포 후 URL/토큰 입력 — proxy/README.md 참고
 
 # 4) 실행 (안드로이드)
 npm run android
@@ -32,10 +32,15 @@ npm run android
 
 ## 환경변수 (`.env`)
 
-| 키 | 설명 | 기본값 |
-|----|------|--------|
-| `ANTHROPIC_API_KEY` | Claude API 키 (필수, AI 조언용) | — |
-| `ANTHROPIC_MODEL` | 사용할 모델 | `claude-haiku-4-5` |
+> ⚠️ **Claude API 키는 앱 `.env`에 넣지 않습니다.** 키는 프록시 서버(Cloudflare Worker)의
+> 시크릿으로만 존재하며, 앱은 프록시 URL만 호출합니다. (`proxy/README.md` 참고)
+
+| 키 | 설명 | 노출 범위 |
+|----|------|-----------|
+| `EXPO_PUBLIC_PROXY_URL` | 배포된 AI 프록시 Worker URL | 앱 빌드에 포함(공개 URL, 무방) |
+| `EXPO_PUBLIC_PROXY_TOKEN` | 프록시 공유 시크릿(약한 게이트) | 앱 빌드에 포함 → 레이트리밋으로 보완 |
+
+`ANTHROPIC_API_KEY`는 `proxy/`의 Worker 시크릿(`wrangler secret put`)으로만 설정합니다.
 
 ## 프로젝트 구조
 
@@ -59,12 +64,13 @@ src/
 
 ## ⚠️ 배포 관련 보안 주의
 
-현재 v1 은 **클라이언트에서 Claude API 를 직접 호출**합니다(개발/내부 테스트용).
-플레이스토어 **공개 배포 전에는 반드시 API 호출을 프록시 서버(서버리스 함수) 경유로 전환**해야 합니다.
-빌드된 APK/AAB 를 디컴파일하면 키가 노출되어 요금 도용 위험이 있습니다. 자세한 단계는 `기획안.md` 의 로드맵 참고.
+- **Claude API 키**는 앱에 포함되지 않습니다 — Cloudflare Worker(`proxy/`)의 시크릿으로만 존재하고, 앱은 프록시 URL만 호출합니다.
+- 앱 빌드에 들어가는 값은 **프록시 URL + 공유 토큰**뿐입니다. 토큰은 디컴파일로 추출 가능한 "약한 게이트"이므로, **Cloudflare 레이트 리밋 + Anthropic 사용 한도/자동충전**으로 요금 도용을 방어합니다. (완전한 보호는 로그인 도입 시 사용자 인증으로 강화)
+- 민감한 일기 데이터는 기기에만 저장되며 `android.allowBackup=false`로 평문 백업 추출을 차단했습니다.
+- 자세한 단계는 `proxy/README.md` 와 `기획안.md`(9·14장) 참고.
 
 ## 로드맵
 
-- **v1 (현재)** — 4탭 기능 완성, 클라이언트 직접 호출, 내부 테스트
-- **v2** — 기능 확장 + AI 호출 프록시 전환 + 스토어 자산 준비
-- **v3** — 플레이스토어 공개 배포 (프록시 전환 완료가 전제 조건)
+- **v1 (현재)** — 로컬 전용 + AI 프록시 경유, 공개 배포 준비 완료
+- **v2** — 로그인 + 클라우드 동기화(기획안 14장), 프리미엄
+- **v3** — 소셜(친구 비교)·위젯·영어 i18n 등
